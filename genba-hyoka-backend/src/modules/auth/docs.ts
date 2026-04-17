@@ -1,0 +1,64 @@
+import { t } from 'elysia';
+
+// ── GET /v1/auth/me ──────────────────────────────────────────
+export const meDocs = {
+  detail: {
+    summary: 'Cek Profil (Token Verify)',
+    description: 'Memverifikasi Access Token dan mengembalikan payload user. (Lokal, No DB Query)',
+    tags: ['Auth'],
+    security: [{ bearerAuth: [] }],
+  },
+};
+
+// ── POST /v1/auth/login ──────────────────────────────────────
+export const loginDocs = {
+  detail: {
+    summary: 'User Login',
+    description: 'Autentikasi menggunakan email dan password. Menghasilkan Access Token dan Refresh Token.',
+    tags: ['Auth'],
+  },
+  body: t.Object({
+    email: t.String({ format: 'email', error: 'Format email tidak valid.' }),
+    password: t.String({ minLength: 6, error: 'Password minimal 6 karakter.' }),
+  }),
+  response: {
+    200: t.Object({
+      success: t.Boolean(),
+      message: t.String(),
+      data: t.Object({
+        accessToken: t.String(),
+        refreshToken: t.String(),
+        user: t.Object({
+          id: t.String(),
+          fullName: t.String(),
+          email: t.String(),
+        }),
+      }),
+    }),
+  },
+};
+
+// ── POST /v1/auth/logout ─────────────────────────────────────
+export const logoutDocs = {
+  detail: {
+    summary: 'User Logout',
+    description: 'Menonaktifkan sesi (is_active = false) berdasarkan refreshToken.',
+    tags: ['Auth'],
+    security: [{ bearerAuth: [] }],
+  },
+  body: t.Object({
+    refreshToken: t.String({ error: 'Refresh Token wajib dikirim.' }),
+  }),
+};
+
+// ── POST /v1/auth/refresh-token ──────────────────────────────
+export const refreshTokenDocs = {
+  detail: {
+    summary: 'Pembaruan Token',
+    description: 'Menerbitkan pasangan token baru menggunakan Refresh Token yang masih aktif.',
+    tags: ['Auth'],
+  },
+  body: t.Object({
+    refreshToken: t.String({ error: 'Refresh Token wajib dikirim.' }),
+  }),
+};
