@@ -3,10 +3,12 @@ import { auditColumns } from './_utils/audit';
 
 export const methodEnum = pgEnum('method', ['GET', 'POST', 'PUT', 'DELETE']);
 export const genderEnum = pgEnum('gender', ['male', 'female']);
+export const roleTypeEnum = pgEnum('role_type', ['super_admin', 'admin', 'manager', 'employee']);
 
 export const roles = pgTable('roles', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 255 }).unique().notNull(),
+  type: roleTypeEnum('type'),
   description: varchar('description', { length: 255 }),
   ...auditColumns,
 });
@@ -30,13 +32,14 @@ export const users = pgTable('users', {
 
 export const permissions = pgTable('permissions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  code: varchar('code', { length: 100 }).unique().notNull(), // Atribut tambahan untuk kemudahan baca
+  code: varchar('code', { length: 100 }).notNull(), // Atribut tambahan untuk kemudahan baca
   entityName: varchar('entity_name', { length: 255 }).notNull(),
   method: methodEnum('method').notNull(),
   bitValue: integer('bit_value').notNull(),
   ...auditColumns,
 }, (table) => ({
   entityNameMethodIdx: index('entity_name_method_idx').on(table.entityName, table.method),
+  codeMethodUnq: unique('code_method_unq').on(table.code, table.method),
 }));
 
 export const userRoles = pgTable('user_roles', {

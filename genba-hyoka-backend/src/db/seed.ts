@@ -1,116 +1,110 @@
 import { db } from './index';
 import { permissions, rolePermissions, roles, userRoles, users } from './schema';
+import { sql } from 'drizzle-orm';
 
-async function seed() {
-    console.log('--- Memulai Seeding Klaster Akses GENBA-HYOKA ---');
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD;
+
+async function validateEnv() {
+    console.log('--- Validasi Konfigurasi Lingkungan (.env) ---');
+    if (!SUPER_ADMIN_EMAIL || !SUPER_ADMIN_PASSWORD) {
+        console.error('❌ ERROR: SUPER_ADMIN_EMAIL atau SUPER_ADMIN_PASSWORD tidak ditemukan di .env!');
+        process.exit(1);
+    }
+    console.log('✅ Konfigurasi .env valid.');
+}
+
+async function seedPermissions() {
+    console.log('--- Memulai Seeding 52 Izin Modul GENBA-HYOKA ---');
+
+    const modules = [
+        { code: 'USR', name: 'Users' },
+        { code: 'ROL', name: 'Roles' },
+        { code: 'PRM', name: 'Permissions' },
+        { code: 'CPY', name: 'Company Profile' },
+        { code: 'AUD', name: 'Audit Logs' },
+        { code: 'NTF', name: 'Notifications' },
+        { code: 'TDF', name: 'Task Definitions' },
+        { code: 'TAS', name: 'Task Assignments' },
+        { code: 'SUB', name: 'Submission Tasks' },
+        { code: 'PRB', name: 'Problem Reports' },
+        { code: 'REV', name: 'Manager Reviews' },
+        { code: 'TMP', name: 'Report Templates' },
+        { code: 'EVL', name: 'Evaluation Reports' },
+    ];
+
+    const methods = [
+        { method: 'GET', bit: 1, suffix: '(Read)' },
+        { method: 'POST', bit: 2, suffix: '(Create)' },
+        { method: 'PUT', bit: 4, suffix: '(Update)' },
+        { method: 'DELETE', bit: 8, suffix: '(Delete)' },
+    ] as const;
 
     try {
-        // 1. Seed Permissions (Locked Data)
-        // Sesuai Dokumen: READ=1, CREATE=2, UPDATE=4, DELETE=8
-        const permissionData = [
-            { code: 'USR', entityName: 'Module Users - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'USR', entityName: 'Module Users - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'USR', entityName: 'Module Users - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'USR', entityName: 'Module Users - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-
-            { code: 'ROL', entityName: 'Module Roles - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'ROL', entityName: 'Module Roles - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'ROL', entityName: 'Module Roles - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'ROL', entityName: 'Module Roles - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-
-            { code: 'PRM', entityName: 'Module Permissions - GET (Read)', method: 'GET', bitValue: 1 },
-
-            { code: 'CPY', entityName: 'Module Company Profile - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'CPY', entityName: 'Module Company Profile - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'CPY', entityName: 'Module Company Profile - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'CPY', entityName: 'Module Company Profile - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-
-            { code: 'AUD', entityName: 'Module Audit Logs - GET (Read)', method: 'GET', bitValue: 1 },
-
-            { code: 'NTF', entityName: 'Module Notifications - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'NTF', entityName: 'Module Notifications - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'NTF', entityName: 'Module Notifications - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'NTF', entityName: 'Module Notifications - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-
-            // Klaster 2 & 3: Task & Field Execution [cite: 186, 235, 255, 267, 378, 381, 384, 390]
-            { code: 'TDF', entityName: 'Module Task Definitions - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'TDF', entityName: 'Module Task Definitions - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'TDF', entityName: 'Module Task Definitions - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'TDF', entityName: 'Module Task Definitions - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-
-            { code: 'TAS', entityName: 'Module Task Assignments - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'TAS', entityName: 'Module Task Assignments - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'TAS', entityName: 'Module Task Assignments - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'TAS', entityName: 'Module Task Assignments - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-
-            { code: 'SUB', entityName: 'Module Submission Tasks - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'SUB', entityName: 'Module Submission Tasks - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'SUB', entityName: 'Module Submission Tasks - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'SUB', entityName: 'Module Submission Tasks - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-
-            { code: 'PRB', entityName: 'Module Problem Reports - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'PRB', entityName: 'Module Problem Reports - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'PRB', entityName: 'Module Problem Reports - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'PRB', entityName: 'Module Problem Reports - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-
-            // Klaster 4: Evaluation & Review [cite: 155, 165, 248, 346, 358, 387]
-            { code: 'REV', entityName: 'Module Manager Reviews - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'REV', entityName: 'Module Manager Reviews - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'REV', entityName: 'Module Manager Reviews - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'REV', entityName: 'Module Manager Reviews - POST (Delete)', method: 'DELETE', bitValue: 8 },
-
-            { code: 'TMP', entityName: 'Module Report Templates - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'TMP', entityName: 'Module Report Templates - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'TMP', entityName: 'Module Report Templates - PUT (Update)', method: 'PUT', bitValue: 4 },
-            { code: 'TMP', entityName: 'Module Report Templates - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-
-            { code: 'EVL', entityName: 'Module Evaluation Reports - GET (Read)', method: 'GET', bitValue: 1 },
-            { code: 'EVL', entityName: 'Module Evaluation Reports - POST (Create)', method: 'POST', bitValue: 2 },
-            { code: 'EVL', entityName: 'Module Evaluation Reports - PUT (UPDATE)', method: 'PUT', bitValue: 4 },
-            { code: 'EVL', entityName: 'Module Evaluation Reports - DELETE (Delete)', method: 'DELETE', bitValue: 8 },
-        ] as const;
-
-        console.log('Inserting permissions...');
-        for (const p of permissionData) {
-            await db.insert(permissions).values(p).onConflictDoNothing();
+        const permissionData: any[] = [];
+        
+        for (const mod of modules) {
+            for (const met of methods) {
+                permissionData.push({
+                    code: mod.code,
+                    entityName: `${mod.name} - ${met.method} ${met.suffix}`,
+                    method: met.method,
+                    bitValue: met.bit,
+                });
+            }
         }
 
-        console.log('✅ Seeding Klaster Akses berhasil!');
+        console.log(`Inserting ${permissionData.length} permissions...`);
+        for (const p of permissionData) {
+            await db.insert(permissions)
+                .values(p)
+                .onConflictDoNothing({ target: [permissions.code, permissions.method] });
+        }
+
+        console.log('✅ Seeding Izin berhasil!');
     } catch (error) {
-        console.error('❌ Seeding gagal:', error);
+        console.error('❌ Seeding Izin gagal:', error);
+        throw error;
     }
 }
 
-
-async function seedSuperAdmin() {
-    console.log('--- MENCETAK KUNCI MASTER: SUPER ADMIN ---');
+async function syncSuperAdmin() {
+    console.log('--- SINKRONISASI AKUN MASTER: SUPER ADMIN ---');
 
     try {
         await db.transaction(async (tx) => {
-            // 1. Pastikan Role Super Admin ada
+            // 1. Pastikan Role Super Admin ada (Idempoten)
             const [superAdminRole] = await tx.insert(roles)
                 .values({
                     name: 'Super Admin',
+                    type: 'super_admin',
                     description: 'Pemegang akses penuh seluruh sistem'
                 })
                 .onConflictDoUpdate({
                     target: roles.name,
-                    set: { description: 'Pemegang akses penuh seluruh sistem' }
+                    set: { 
+                        type: 'super_admin',
+                        description: 'Pemegang akses penuh seluruh sistem' 
+                    }
                 })
                 .returning();
 
-            // 2. Buat Akun User (Gunakan email & password saja sesuai koreksi sebelumnya)
-            const hashedPassword = await Bun.password.hash('Admin123!'); // Ganti dengan password aman
+            // 2. Sinkronisasi User (Hanya Email & Password, Reset Password dari .env)
+            const hashedPassword = await Bun.password.hash(SUPER_ADMIN_PASSWORD!);
+            
             const [adminUser] = await tx.insert(users)
                 .values({
                     fullName: 'Sistem Administrator',
-                    email: 'admin@genba.com',
+                    email: SUPER_ADMIN_EMAIL!,
                     password: hashedPassword,
                     isActive: true
                 })
                 .onConflictDoUpdate({
                     target: users.email,
-                    set: { fullName: 'Sistem Administrator' }
+                    set: { 
+                        password: hashedPassword, // Emergency Reset Capability
+                        fullName: 'Sistem Administrator'
+                    }
                 })
                 .returning();
 
@@ -122,35 +116,40 @@ async function seedSuperAdmin() {
                 })
                 .onConflictDoNothing();
 
-            // 4. BERIKAN SEMUA HAK AKSES
-            // Ambil semua permission yang tersedia di DB
+            // 4. Sinkronisasi Seluruh Hak Akses (Bulk)
             const allPermissions = await tx.select({ id: permissions.id }).from(permissions);
-
+            
             if (allPermissions.length > 0) {
                 const rolePermsData = allPermissions.map((p) => ({
                     roleId: superAdminRole.id,
                     permissionId: p.id
                 }));
 
-                // Masukkan semua relasi secara bulk
                 await tx.insert(rolePermissions)
                     .values(rolePermsData)
                     .onConflictDoNothing();
             }
 
-            console.log('✅ Super Admin berhasil dikonfigurasi!');
-            console.log('📧 Email: admin@genba.com');
-            console.log('🔑 Password: Admin123!');
+            console.log('✅ Sinkronisasi Super Admin berhasil!');
+            console.log(`📧 Email: ${SUPER_ADMIN_EMAIL}`);
+            console.log('🔑 Password: (Dikonfigurasi di .env)');
         });
     } catch (error) {
-        console.error('❌ Gagal membuat Super Admin:', error);
+        console.error('❌ Sinkronisasi Super Admin gagal:', error);
+        throw error;
     }
 }
 
 async function main() {
-    await seed();
-    await seedSuperAdmin();
-    process.exit(0);
+    try {
+        await validateEnv();
+        await seedPermissions();
+        await syncSuperAdmin();
+        console.log('\n--- PROSES SEEDING SELESAI ---');
+        process.exit(0);
+    } catch (error) {
+        process.exit(1);
+    }
 }
 
 main();

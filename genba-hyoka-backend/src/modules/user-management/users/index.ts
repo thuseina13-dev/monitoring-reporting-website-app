@@ -2,7 +2,7 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db';
 import { users, sessions, roles, userRoles } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, count, inArray } from 'drizzle-orm';
+import { eq, and, count, inArray } from 'drizzle-orm';
 import { AppError } from '../../../utils/AppError';
 import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
 import { jwtGuard, checkPermission, BIT } from '../../../middlewares/jwtGuard';
@@ -154,6 +154,17 @@ export const usersModule = new Elysia({ prefix: '/v1/users' }) // Mengikuti stan
       const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.id, params.id)).limit(1);
       if (!existing) throw new AppError(404, 'Pengguna tidak ditemukan.');
 
+      // Proteksi Master Account: User terhubung ke role super_admin tidak dapat diubah (Issue #17)
+      const [superAdminLink] = await db
+        .select({ roleId: userRoles.roleId })
+        .from(userRoles)
+        .innerJoin(roles, eq(userRoles.roleId, roles.id))
+        .where(and(eq(userRoles.userId, params.id), eq(roles.type, 'super_admin')))
+        .limit(1);
+      if (superAdminLink) {
+        throw new AppError(403, 'Akun Master Sistem tidak dapat dimodifikasi atau dihapus');
+      }
+
       const updated = await db.transaction(async (tx) => {
         // 1. Update Profile
         const updateData: Record<string, any> = { updatedBy: currentUser.id };
@@ -210,6 +221,17 @@ export const usersModule = new Elysia({ prefix: '/v1/users' }) // Mengikuti stan
       await db.transaction(async (tx) => {
         const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.id, params.id)).limit(1);
         if (!user) throw new AppError(404, 'Pengguna tidak ditemukan.');
+
+        // Proteksi Master Account: User terhubung ke role super_admin tidak dapat dihapus (Issue #17)
+        const [superAdminLink] = await tx
+          .select({ roleId: userRoles.roleId })
+          .from(userRoles)
+          .innerJoin(roles, eq(userRoles.roleId, roles.id))
+          .where(and(eq(userRoles.userId, params.id), eq(roles.type, 'super_admin')))
+          .limit(1);
+        if (superAdminLink) {
+          throw new AppError(403, 'Akun Master Sistem tidak dapat dimodifikasi atau dihapus');
+        }
 
         const [sessionCount] = await tx.select({ count: count() }).from(sessions).where(eq(sessions.userId, params.id));
 
