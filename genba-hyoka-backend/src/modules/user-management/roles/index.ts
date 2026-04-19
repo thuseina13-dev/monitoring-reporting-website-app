@@ -130,6 +130,11 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' }) // Prefix v1 sesu
       const [existing] = await db.select().from(roles).where(eq(roles.id, params.id)).limit(1);
       if (!existing) throw new AppError(404, 'Role tidak ditemukan.');
 
+      // Proteksi Read-Only: Role bertipe super_admin tidak dapat diubah (Issue #17)
+      if (existing.type === 'super_admin') {
+        throw new AppError(403, 'Peran Sistem Induk bersifat Read-Only');
+      }
+
       const updated = await db.transaction(async (tx) => {
         const updateData: Record<string, any> = { updatedBy: currentUser.id };
         if (body.name) updateData.name = body.name;
@@ -180,9 +185,9 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' }) // Prefix v1 sesu
         const [role] = await tx.select().from(roles).where(eq(roles.id, params.id)).limit(1);
         if (!role) throw new AppError(404, 'Role tidak ditemukan.');
 
-        // Proteksi Super Admin (by name for safety)
-        if (role.name.toLowerCase() === 'super admin') {
-          throw new AppError(403, 'Role Super Admin tidak dapat dihapus.');
+        // Proteksi Read-Only: Role bertipe super_admin tidak dapat dihapus (Issue #17)
+        if (role.type === 'super_admin') {
+          throw new AppError(403, 'Peran Sistem Induk bersifat Read-Only');
         }
 
         // Cek apakah digunakan oleh user

@@ -136,4 +136,57 @@ describe('Users Module - Unit Test /v1/users', () => {
     );
     expect(response.status).toBe(201);
   });
+
+  it('PUT /v1/users/:id > Harus blokir jika user terhubung ke role super_admin (403)', async () => {
+    mock.module("../db", () => ({
+      db: {
+        select: (fields: any) => {
+          // Mock pertama: cek existing user
+          if (fields && fields.id) return createMockChain([{ id: 'user-super' }]);
+          // Mock kedua: cek link ke super_admin (innerJoin)
+          if (fields && fields.roleId) return createMockChain([{ roleId: 'role-super' }]);
+          return createMockChain([]);
+        },
+      },
+      checkConnection: () => Promise.resolve(true)
+    }));
+
+    const token = await getTestToken();
+    const response = await app.handle(
+      new Request('http://localhost/v1/users/user-super', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fullName: 'Update Name' }),
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(403);
+    expect(body.message).toBe('Akun Master Sistem tidak dapat dimodifikasi atau dihapus');
+  });
+
+  it('DELETE /v1/users/:id > Harus blokir jika user terhubung ke role super_admin (403)', async () => {
+    mock.module("../db", () => ({
+      db: {
+        transaction: async (fn: Function) => fn({
+          select: (fields: any) => {
+            if (fields && fields.id) return createMockChain([{ id: 'user-super' }]);
+            if (fields && fields.roleId) return createMockChain([{ roleId: 'role-super' }]);
+            return createMockChain([]);
+          },
+        }),
+      },
+      checkConnection: () => Promise.resolve(true)
+    }));
+
+    const token = await getTestToken();
+    const response = await app.handle(
+      new Request('http://localhost/v1/users/user-super', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(403);
+    expect(body.message).toBe('Akun Master Sistem tidak dapat dimodifikasi atau dihapus');
+  });
 });

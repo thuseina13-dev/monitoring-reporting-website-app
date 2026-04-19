@@ -131,4 +131,47 @@ describe('Roles Module - Unit Test /v1/roles', () => {
     );
     expect(response.status).toBe(201);
   });
+
+  it('PUT /v1/roles/:id > Harus blokir perubahan jika role tipe super_admin (403)', async () => {
+    mock.module("../db", () => ({
+      db: {
+        select: () => createMockChain([{ id: 'role-super', name: 'Super Admin', type: 'super_admin' }]),
+      },
+      checkConnection: () => Promise.resolve(true)
+    }));
+
+    const token = await getTestToken();
+    const response = await app.handle(
+      new Request('http://localhost/v1/roles/role-super', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: 'Role Baru' }),
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(403);
+    expect(body.message).toBe('Peran Sistem Induk bersifat Read-Only');
+  });
+
+  it('DELETE /v1/roles/:id > Harus blokir penghapusan jika role tipe super_admin (403)', async () => {
+    mock.module("../db", () => ({
+      db: {
+        transaction: async (fn: Function) => fn({
+            select: () => createMockChain([{ id: 'role-super', name: 'Super Admin', type: 'super_admin' }]),
+        }),
+      },
+      checkConnection: () => Promise.resolve(true)
+    }));
+
+    const token = await getTestToken();
+    const response = await app.handle(
+      new Request('http://localhost/v1/roles/role-super', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(403);
+    expect(body.message).toBe('Peran Sistem Induk bersifat Read-Only');
+  });
 });
