@@ -7,7 +7,10 @@ import { usersModule } from './modules/user-management/users';
 import { rolesModule } from './modules/user-management/roles';
 import { swagger } from '@elysiajs/swagger';
 
+import { cors } from '@elysiajs/cors';
+
 const app = new Elysia()
+  .use(cors())
   .use(swagger({
     path: '/docs',
     documentation: {
