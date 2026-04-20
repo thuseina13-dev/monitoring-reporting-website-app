@@ -26,3 +26,8 @@
 
 - initial dokumentasi teknis
 - initial develop FE dan BE
+
+## Development - 20/04/2026 
+
+- initial auth feature FE
+- initial auth feature BE
