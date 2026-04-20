@@ -159,6 +159,7 @@ export default function LoginScreen() {
                     m={5}
                     width={35}
                     onPress={() => setShowPassword(!showPassword)}
+                    accessibilityLabel={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                     icon={showPassword ? <EyeOff size={18} color={COLORS.textMuted} opacity={0.5} /> : <Eye size={18} color={COLORS.textMuted} opacity={0.5} />}
                   />
                 </XStack>
