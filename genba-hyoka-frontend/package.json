@@ -20,6 +20,7 @@
     "@tamagui/config": "2.0.0-rc.26",
     "@tamagui/font-inter": "2.0.0-rc.26",
     "@tamagui/lucide-icons": "2.0.0-rc.26",
+    "@tamagui/toast": "^2.0.0-rc.26",
     "@tanstack/react-query": "^5.99.2",
     "axios": "^1.15.1",
     "expo": "~54.0.33",
