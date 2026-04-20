@@ -32,6 +32,8 @@ export const loginDocs = {
           id: t.String(),
           fullName: t.String(),
           email: t.String(),
+          roles: t.Array(t.String()),
+          prm: t.Record(t.String(), t.Number()),
         }),
       }),
     }),

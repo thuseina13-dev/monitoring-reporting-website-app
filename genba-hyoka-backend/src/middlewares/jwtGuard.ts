@@ -38,6 +38,7 @@ export const jwtGuard = (app: Elysia) =>
           id: payload.sub as string,
           email: payload.email as string,
           prm: (payload.prm ?? {}) as Record<string, number>,
+          roles: (payload.roles ?? []) as string[],
         },
       };
     });
