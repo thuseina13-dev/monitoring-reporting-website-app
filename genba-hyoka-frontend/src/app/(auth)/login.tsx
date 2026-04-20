@@ -1,5 +1,20 @@
-import React from 'react';
-import { View, SizableText, Input, Button, YStack, XStack, H1, Spinner, Form, Card, Paragraph } from 'tamagui';
+import React, { useState } from 'react';
+import {
+  View,
+  SizableText,
+  Input,
+  Button,
+  YStack,
+  XStack,
+  H1,
+  Spinner,
+  Form,
+  Card,
+  Paragraph,
+  Label
+} from 'tamagui';
+import { Image as RNImage } from 'react-native';
+import { LinearGradient } from 'tamagui/linear-gradient';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginFormInputs } from '../../utils/validations';
@@ -7,14 +22,17 @@ import { useMutation } from '@tanstack/react-query';
 import { authService } from '../../services/api/authService';
 import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
-import { Lock, Mail } from '@tamagui/lucide-icons';
-
+import { Lock, Mail, Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useToastController } from '@tamagui/toast';
+import { COLORS } from '../../constants/theme';
+import LogoTumpuk from '../../assets/images/logo-tumpuk-compress-removebg-preview.png';
 
 export default function LoginScreen() {
+  console.log('Genba Logo Asset Path:', LogoTumpuk);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
   const toast = useToastController();
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     control,
@@ -33,13 +51,13 @@ export default function LoginScreen() {
     onSuccess: async (data) => {
       const { user, accessToken, refreshToken } = data.data;
       await setAuth(user, accessToken, refreshToken);
-      
+
       toast.show('Login Berhasil', {
         message: `Selamat datang, ${user.fullName}`,
         native: false,
       });
 
-      // router.replace('/(dashboard)/manager' as any); // Default redirect to dashboard
+      // router.replace('/(dashboard)/manager' as any);
     },
     onError: (error: any) => {
       const msg = error.response?.data?.message || 'Email atau password salah';
@@ -48,7 +66,6 @@ export default function LoginScreen() {
         type: 'error',
         native: false,
       });
-      console.error('Login error:', error.response?.data || error.message);
     },
   });
 
@@ -57,87 +74,144 @@ export default function LoginScreen() {
   };
 
   return (
-    <YStack f={1} jc="center" ai="center" bg="$background" p="$4" gap="$4">
-      <Card elevation={5} p="$6" width="100%" maxWidth={400} borderRadius="$4" borderWidth={1} borderColor="$borderColor">
-        <YStack gap="$4">
-          <YStack ai="center" gap="$2">
-            <H1 size="$9" color="$color">Genba Hyoka</H1>
-            <Paragraph theme="alt2">Monitoring & Reporting App</Paragraph>
-          </YStack>
+    <YStack f={1} bc={COLORS.pageBackground} jc="center" ai="center" p="$4">
+      <Card
+        elevation={5}
+        p="$8"
+        width="100%"
+        maxWidth={400}
+        br="$4"
+        bg={COLORS.cardBackground}
+        bw={1}
+        bc={COLORS.borderColor}
+      >
+        <YStack gap="$2">
+          {/* Logo Section */}
+          <View ai="center" jc="center" h={180} w="100%">
+            <RNImage
+              source={LogoTumpuk}
+              style={{ width: 300, height: 180 }}
+              resizeMode="contain"
+            />
+          </View>
 
           <Form onSubmit={handleSubmit(onSubmit)} gap="$4">
-            <YStack gap="$3">
-              <YStack gap="$1">
-                <XStack ai="center" gap="$2" bc="$borderColor" bw={1} br="$3" px="$3" py="$1">
-                  <Mail size={20} color="$colorFocus" />
+            <YStack gap="$4">
+              {/* Email field */}
+              <YStack gap="$1.5">
+                <Label color={COLORS.textDark} fontWeight="600" size="$3" ml="$1">Login Email</Label>
+                <XStack ai="center" bg={COLORS.inputBackground} br="$3" px="$3" h={50}>
+                  <Mail size={18} color={COLORS.textMuted} opacity={0.5} marginRight={15} />
                   <Controller
                     control={control}
                     name="email"
                     render={({ field: { onChange, onBlur, value } }) => (
                       <Input
                         f={1}
-                        borderWidth={0}
+                        bw={0}
                         bg="transparent"
-                        placeholder="Email"
+                        placeholder="Masukkan Email"
                         onBlur={onBlur}
                         onChangeText={onChange}
                         value={value}
                         autoCapitalize="none"
                         keyboardType="email-address"
+                        h="100%"
+                        size="$4"
                       />
                     )}
                   />
                 </XStack>
                 {errors.email && (
-                  <SizableText color="$red10" size="$1" px="$3">
+                  <SizableText color="$red10" size="$1" mt="$1" ml="$1">
                     {errors.email.message}
                   </SizableText>
                 )}
               </YStack>
 
-              <YStack gap="$1">
-                <XStack ai="center" gap="$2" bc="$borderColor" bw={1} br="$3" px="$3" py="$1">
-                  <Lock size={20} color="$colorFocus" />
+              {/* Password field */}
+              <YStack gap="$1.5">
+                <Label color={COLORS.textDark} fontWeight="600" size="$3" ml="$1">Password</Label>
+                <XStack ai="center" bg={COLORS.inputBackground} br="$3" px="$3" h={50}  >
+                  <Lock size={18} color={COLORS.textMuted} opacity={0.5} marginRight={15}/>
                   <Controller
                     control={control}
                     name="password"
                     render={({ field: { onChange, onBlur, value } }) => (
                       <Input
                         f={1}
-                        borderWidth={0}
+                        bw={0}
                         bg="transparent"
-                        placeholder="Password"
-                        secureTextEntry
+                        placeholder="Masukkan Password"
+                        secureTextEntry={!showPassword}
+                        type={showPassword ? 'text' : 'password'}
                         onBlur={onBlur}
                         onChangeText={onChange}
                         value={value}
+                        h="100%"
+                        size="$4"
                       />
                     )}
                   />
+                  <Button
+                    chromeless
+                    p={1}
+                    m={5}
+                    width={35}
+                    onPress={() => setShowPassword(!showPassword)}
+                    accessibilityLabel={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                    icon={showPassword ? <EyeOff size={18} color={COLORS.textMuted} opacity={0.5} /> : <Eye size={18} color={COLORS.textMuted} opacity={0.5} />}
+                  />
                 </XStack>
                 {errors.password && (
-                  <SizableText color="$red10" size="$1" px="$3">
+                  <SizableText color="$red10" size="$1" mt="$1" ml="$1">
                     {errors.password.message}
                   </SizableText>
                 )}
               </YStack>
             </YStack>
 
+            {/* Login Button with Gradient Fixed */}
             <Button
-              theme="dark"
+              mt="$4"
+              h={55}
+              br="$3"
               onPress={handleSubmit(onSubmit)}
               disabled={loginMutation.isPending}
-              icon={loginMutation.isPending ? <Spinner /> : null}
+              bg="transparent"
+              p={0}
+              pressStyle={{ opacity: 0.8 }}
+              overflow="hidden"
+              pos="relative"
             >
-              {loginMutation.isPending ? 'Logging in...' : 'Login'}
+              <LinearGradient
+                colors={COLORS.gradients.primary}
+                start={[0, 0]}
+                end={[1, 1]}
+                fullscreen
+                borderRadius={12}
+                zIndex={0}
+              />
+              <XStack ai="center" jc="center" gap="$2" f={1} w="100%" h="100%" zIndex={1}>
+                {loginMutation.isPending ? (
+                  <Spinner color="white" />
+                ) : (
+                  <>
+                    <SizableText color={COLORS.textLight} fontWeight="800" size="$5">LOGIN KESINI</SizableText>
+                    <SizableText color={COLORS.textLight} fontWeight="800" size="$5">→</SizableText>
+                  </>
+                )}
+              </XStack>
             </Button>
-            
-            {loginMutation.isError && (
-              <SizableText color="$red10" textAlign="center" size="$2">
-                {(loginMutation.error as any).response?.data?.message || 'Email atau password salah'}
-              </SizableText>
-            )}
           </Form>
+
+          {/* Footer Info */}
+          <YStack ai="center" mt="$2">
+            <Paragraph size="$1" color={COLORS.textMuted} opacity={0.6} textAlign="center">
+              GENBA-HYOKA v.1.0.0{"\n"}
+              Sistem Pengawasan dan Evaluasi Operasional Lapangan
+            </Paragraph>
+          </YStack>
         </YStack>
       </Card>
     </YStack>
