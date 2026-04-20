@@ -9,9 +9,12 @@ import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
 import { Lock, Mail } from '@tamagui/lucide-icons';
 
+import { useToastController } from '@tamagui/toast';
+
 export default function LoginScreen() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const toast = useToastController();
 
   const {
     control,
@@ -30,10 +33,21 @@ export default function LoginScreen() {
     onSuccess: async (data) => {
       const { user, accessToken, refreshToken } = data.data;
       await setAuth(user, accessToken, refreshToken);
-      console.log('response data', data)
+      
+      toast.show('Login Berhasil', {
+        message: `Selamat datang, ${user.fullName}`,
+        native: false,
+      });
+
       // router.replace('/(dashboard)/manager' as any); // Default redirect to dashboard
     },
     onError: (error: any) => {
+      const msg = error.response?.data?.message || 'Email atau password salah';
+      toast.show('Login Gagal', {
+        message: msg,
+        type: 'error',
+        native: false,
+      });
       console.error('Login error:', error.response?.data || error.message);
     },
   });

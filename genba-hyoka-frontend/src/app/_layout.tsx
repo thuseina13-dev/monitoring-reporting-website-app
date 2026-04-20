@@ -1,10 +1,12 @@
 import { Stack } from 'expo-router';
 import { TamaguiProvider } from 'tamagui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ToastProvider, ToastViewport } from '@tamagui/toast';
 import tamaguiConfig from '../../tamagui.config';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { CustomToast } from '../components/CustomToast';
 
 const queryClient = new QueryClient();
 
@@ -22,18 +24,19 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  console.log('Fonts loaded:', loaded);
-  console.log('Tamagui config:', !!tamaguiConfig);
-
   if (!loaded) return null;
 
   return (
     <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
       <QueryClientProvider client={queryClient}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)/login" options={{ title: 'Login' }} />
-          <Stack.Screen name="index" options={{ title: 'Home' }} />
-        </Stack>
+        <ToastProvider swipeDirection="horizontal" duration={3000}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)/login" options={{ title: 'Login' }} />
+            <Stack.Screen name="index" options={{ title: 'Home' }} />
+          </Stack>
+          <CustomToast />
+          <ToastViewport top="$8" left={0} right={0} />
+        </ToastProvider>
       </QueryClientProvider>
     </TamaguiProvider>
   );
