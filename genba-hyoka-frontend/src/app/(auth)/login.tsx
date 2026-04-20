@@ -183,6 +183,7 @@ export default function LoginScreen() {
               pressStyle={{ opacity: 0.8 }}
               overflow="hidden"
               pos="relative"
+              accessibilityLabel="Tombol Login"
             >
               <LinearGradient
                 colors={COLORS.gradients.primary}
