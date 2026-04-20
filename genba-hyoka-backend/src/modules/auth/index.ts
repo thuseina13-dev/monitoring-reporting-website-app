@@ -29,9 +29,13 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
 
   // ── HELPER: Flaten Bitmask ──────────────────────────────────
   .derive(async ({ }) => ({
-    flattenPermissions: async (userId: string) => {
-      const perms = await db
-        .select({ code: permissions.code, bitValue: permissions.bitValue })
+    getAuthData: async (userId: string) => {
+      const userAuthData = await db
+        .select({ 
+          permissionCode: permissions.code, 
+          bitValue: permissions.bitValue,
+          roleType: roles.type 
+        })
         .from(userRoles)
         .innerJoin(roles, eq(userRoles.roleId, roles.id))
         .innerJoin(rolePermissions, eq(roles.id, rolePermissions.roleId))
@@ -39,18 +43,37 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
         .where(eq(userRoles.userId, userId));
 
       const prm: Record<string, number> = {};
-      perms.forEach((p) => {
-        const modulePrefix = p.code.substring(0, 3).toUpperCase();
-        prm[modulePrefix] = (prm[modulePrefix] || 0) | p.bitValue;
+      const rolesSet = new Set<string>();
+
+      userAuthData.forEach((row) => {
+        // Flatten permissions menggunakan Bitwise OR
+        const modulePrefix = row.permissionCode.substring(0, 3).toUpperCase();
+        prm[modulePrefix] = (prm[modulePrefix] || 0) | row.bitValue;
+        
+        // Collect unique role types
+        if (row.roleType) {
+          rolesSet.add(row.roleType);
+        }
       });
-      return prm;
+
+      // Mapping role types to short codes based on Issue #27
+      const roleMap: Record<string, string> = {
+        'super_admin': 'adm',
+        'admin': 'adm',
+        'manager': 'man',
+        'employee': 'emp'
+      };
+
+      const roleCodes = Array.from(rolesSet).map(type => roleMap[type] || type);
+
+      return { prm, roles: roleCodes };
     }
   }))
 
   // ── POST /login ─────────────────────────────────────────────
   .post(
     '/login',
-    async ({ body, jwtAccess, jwtRefresh, flattenPermissions }) => {
+    async ({ body, jwtAccess, jwtRefresh, getAuthData }) => {
       const { email, password } = body;
 
       const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -59,9 +82,15 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
       const isPasswordValid = await Bun.password.verify(password, user.password);
       if (!isPasswordValid) throw new AppError(401, 'Email atau password salah.');
 
-      const prm = await flattenPermissions(user.id);
+      const { prm, roles: userRoleCodes } = await getAuthData(user.id);
 
-      const accessToken = await jwtAccess.sign({ sub: user.id, name: user.fullName, prm });
+      const accessToken = await jwtAccess.sign({ 
+        sub: user.id, 
+        name: user.fullName, 
+        email: user.email,
+        prm,
+        roles: userRoleCodes 
+      });
       const refreshToken = await jwtRefresh.sign({ sub: user.id });
 
       // Session Management (Upsert)
@@ -88,7 +117,13 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
       return sendSuccess({
         accessToken,
         refreshToken,
-        user: { id: user.id, fullName: user.fullName, email: user.email },
+        user: { 
+          id: user.id, 
+          fullName: user.fullName, 
+          email: user.email,
+          roles: userRoleCodes,
+          prm
+        },
       }, 'Login berhasil.');
     },
     loginDocs
@@ -124,7 +159,7 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
   // ── POST /refresh-token ──────────────────────────────────────
   .post(
     '/refresh-token',
-    async ({ body, jwtAccess, jwtRefresh, flattenPermissions }) => {
+    async ({ body, jwtAccess, jwtRefresh, getAuthData }) => {
       const payload = await jwtRefresh.verify(body.refreshToken);
       if (!payload) throw new AppError(401, 'Refresh Token tidak valid atau kadaluwarsa.');
 
@@ -138,9 +173,15 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
       const [user] = await db.select().from(users).where(eq(users.id, payload.sub as string)).limit(1);
       if (!user) throw new AppError(404, 'User tidak ditemukan.');
 
-      const prm = await flattenPermissions(user.id);
+      const { prm, roles: userRoleCodes } = await getAuthData(user.id);
       
-      const newAccessToken = await jwtAccess.sign({ sub: user.id, name: user.fullName, prm });
+      const newAccessToken = await jwtAccess.sign({ 
+        sub: user.id, 
+        name: user.fullName, 
+        email: user.email,
+        prm,
+        roles: userRoleCodes
+      });
       const newRefreshToken = await jwtRefresh.sign({ sub: user.id });
 
       // Update kolom token di baris sesi yang sama (Issue #12 Req)

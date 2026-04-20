@@ -25,7 +25,7 @@ mock.module("../db", () => ({
   db: {
     select: (fields: any) => {
         // Mock and logic based on table fields
-        if (fields && fields.code) return createMockChain([{ code: 'USR_CREATE', bitValue: 1 }]);
+        if (fields && fields.permissionCode) return createMockChain([{ permissionCode: 'USR_CREATE', bitValue: 1, roleType: 'admin' }]);
         return createMockChain([mockUser]);
     },
     insert: () => createMockChain([{ id: 'session-1' }]),
@@ -57,6 +57,8 @@ describe('Auth Module - Unit Test /v1/auth', () => {
     expect(body.data.accessToken).toBeDefined();
     expect(body.data.refreshToken).toBeDefined();
     expect(body.data.user.fullName).toBe('John Doe');
+    expect(body.data.user.roles).toContain('adm');
+    expect(body.data.user.prm.USR).toBe(1);
   });
 
   it('GET /v1/auth/me > Berhasil verifikasi token (Status 200)', async () => {
@@ -69,6 +71,10 @@ describe('Auth Module - Unit Test /v1/auth', () => {
       })
     );
     const { data } = await loginRes.json();
+    
+    if (!data) {
+        console.error('Login failed in test setup');
+    }
 
     const response = await app.handle(
       new Request('http://localhost/v1/auth/me', {
@@ -80,6 +86,7 @@ describe('Auth Module - Unit Test /v1/auth', () => {
     const body = await response.json();
     expect(response.status).toBe(200);
     expect(body.data.sub).toBe('user-uuid-1');
-    expect(body.data.prm.USR).toBe(1); // bitmask flatten check
+    expect(body.data.prm.USR).toBe(1); 
+    expect(body.data.roles).toContain('adm');
   });
 });
