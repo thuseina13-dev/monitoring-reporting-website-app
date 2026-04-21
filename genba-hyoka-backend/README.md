@@ -38,30 +38,24 @@ Open http://localhost:3000/ with your browser to see the result.
 Proyek ini menggunakan standar respon dan sistem filtering terpusat untuk mempermudah integrasi dengan frontend.
 
 ### 1. Paginasi (Pagination)
-Sistem mendukung dua model paginasi:
+Sistem mendukung dua model paginasi yang **saling bertentangan** (tidak bisa digunakan bersamaan):
 
 #### A. Traditional (Offset-based)
-Cocok untuk navigasi halaman (Halaman 1, 2, 3).
-- **Params:** `page` (Nomor halaman), `limit` (Data per halaman).
+Cocok untuk navigasi nomor halaman (Halaman 1, 2, 3).
+- **Params:** `page` (Halaman), `limit`.
+- **Response Meta:** Berisi `total`, `current_page`, `last_page`, dan `has_more`.
 - **Contoh:** `GET /v1/users?page=1&limit=10`
 
 #### B. Modern (Cursor-based)
-Cocok untuk *Infinite Scroll*. Lebih cepat dan stabil untuk dataset besar.
-- **Params:** `cursor` (ID terakhir), `limit` (Data per halaman).
+Cocok untuk *Infinite Scroll*. Memberikan performa lebih stabil untuk data besar.
+- **Params:** `cursor` (ID data terakhir), `limit`.
+- **Response Meta:** Berisi `next_cursor` (ID untuk pemanggilan berikutnya) dan `has_more`.
 - **Contoh:** `GET /v1/users?cursor=uuid-user-terakhir&limit=10`
-- **Output:** Gunakan field `next_cursor` di dalam objek `meta` untuk panggilan API berikutnya.
 
-**Format Respon Metadata:**
-```json
-"meta": {
-    "total": 100,
-    "limit": 10,
-    "current_page": 1,   // Hanya di Offset
-    "last_page": 10,    // Hanya di Offset
-    "next_cursor": "...", // Hanya di Cursor
-    "has_more": true
-}
-```
+> [!IMPORTANT]
+> Mengirimkan parameter `page` dan `cursor` secara bersamaan akan menghasilkan **Error 400 Bad Request**.
+
+---
 
 
 ### 2. Pencarian Global (Global Search)
