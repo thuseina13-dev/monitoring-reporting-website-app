@@ -87,6 +87,11 @@ Sistem mendukung logika bertingkat (**Nested AND/OR**) tanpa batas menggunakan f
 **Kombinasi:**
 Anda bisa menggabungkan semua filter di atas secara rekursif sesuai kebutuhan logika bisnis frontend.
 
+### 5. Catatan Tambahan (Notes)
+- **Case-Insensitive**: Semua pencarian teks (`search`, `address`, `fullName`, dll) bersifat tidak peka huruf besar/kecil.
+- **Default Sorting**: Secara default, data diurutkan berdasarkan `ID` secara `ASC` (A-Z/Kecil ke Besar) untuk menjamin stabilitas paginasi cursor.
+
 ---
+
 
 

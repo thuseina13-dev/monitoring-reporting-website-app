@@ -20,14 +20,15 @@ export const listUsersDocs = {
 
     page: t.Optional(t.Numeric({ minimum: 1, default: 1 })),
     limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100, default: 10 })),
-    search: t.Optional(t.String({ description: 'Cari berdasarkan nama atau email' })),
-    isActive: t.Optional(t.String({ description: 'Filter status (true/false)' })),
-    phoneNo: t.Optional(t.String({ description: 'Filter berdasarkan nomor telepon' })),
-    gender: t.Optional(t.String({ description: 'Filter berdasarkan gender (male/female)' })),
-    address: t.Optional(t.String({ description: 'Filter berdasarkan alamat' })),
-    cursor: t.Optional(t.String({ description: 'Cursor untuk paginasi (menggunakan ID)' })),
+    search: t.Optional(t.String({ description: 'Cari nama/email (Case-insensitive)' })),
+    isActive: t.Optional(t.String({ description: 'Filter status true/false' })),
+    phoneNo: t.Optional(t.String({ description: 'Filter nomor telepon' })),
+    gender: t.Optional(t.String({ description: 'Filter gender (male/female)' })),
+    address: t.Optional(t.String({ description: 'Filter alamat (Partial match)' })),
+    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor. Data diurutkan via ID ASC.' })),
   }),
 };
+
 
 
 
