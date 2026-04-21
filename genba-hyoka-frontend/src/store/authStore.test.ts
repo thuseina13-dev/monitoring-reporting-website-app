@@ -18,10 +18,11 @@ describe('authStore', () => {
     expect(state.user).toBeNull();
     expect(state.accessToken).toBeNull();
     expect(state.isAuthenticated).toBe(false);
+    expect(state.activeRole).toBeNull();
   });
 
   it('should set auth correctly', async () => {
-    const user = { id: '1', fullName: 'Test User', email: 'test@example.com' };
+    const user = { id: '1', fullName: 'Test User', email: 'test@example.com', roles: ['admin'] };
     const accessToken = 'access-token';
     const refreshToken = 'refresh-token';
 
@@ -31,11 +32,12 @@ describe('authStore', () => {
     expect(state.user).toEqual(user);
     expect(state.accessToken).toBe(accessToken);
     expect(state.isAuthenticated).toBe(true);
+    expect(state.activeRole).toBe('admin');
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith('refreshToken', refreshToken);
   });
 
   it('should clear auth correctly', async () => {
-    const user = { id: '1', fullName: 'Test User', email: 'test@example.com' };
+    const user = { id: '1', fullName: 'Test User', email: 'test@example.com', roles: ['admin'] };
     await useAuthStore.getState().setAuth(user, 'at', 'rt');
 
     await useAuthStore.getState().clearAuth();
@@ -44,6 +46,7 @@ describe('authStore', () => {
     expect(state.user).toBeNull();
     expect(state.accessToken).toBeNull();
     expect(state.isAuthenticated).toBe(false);
+    expect(state.activeRole).toBeNull();
     expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('refreshToken');
   });
 });
