@@ -6,12 +6,17 @@ import { authModule } from './modules/auth';
 import { usersModule } from './modules/user-management/users';
 import { rolesModule } from './modules/user-management/roles';
 import { swagger } from '@elysiajs/swagger';
+import { errorSchema } from './utils/schema';
 
 import { cors } from '@elysiajs/cors';
 
 const app = new Elysia()
   .use(cors())
+  .model({
+    ErrorResponse: errorSchema,
+  })
   .use(swagger({
+
     path: '/docs',
     documentation: {
       info: {

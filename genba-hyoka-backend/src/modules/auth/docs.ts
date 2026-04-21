@@ -1,4 +1,7 @@
 import { t } from 'elysia';
+import { errorSchema, successResponse, errorResponses } from '../../utils/schema';
+
+
 
 // ── GET /v1/auth/me ──────────────────────────────────────────
 export const meDocs = {
@@ -8,7 +11,21 @@ export const meDocs = {
     tags: ['Auth'],
     security: [{ bearerAuth: [] }],
   },
+  response: {
+    200: successResponse(t.Object({
+      sub: t.String(),
+      name: t.String(),
+      email: t.String(),
+      prm: t.Record(t.String(), t.Number()),
+      roles: t.Array(t.String()),
+      iat: t.Number(),
+      exp: t.Number(),
+    })),
+    ...errorResponses([401, 500]),
+  },
 };
+
+
 
 // ── POST /v1/auth/login ──────────────────────────────────────
 export const loginDocs = {
@@ -22,23 +39,22 @@ export const loginDocs = {
     password: t.String({ minLength: 6, error: 'Password minimal 6 karakter.' }),
   }),
   response: {
-    200: t.Object({
-      success: t.Boolean(),
-      message: t.String(),
-      data: t.Object({
-        accessToken: t.String(),
-        refreshToken: t.String(),
-        user: t.Object({
-          id: t.String(),
-          fullName: t.String(),
-          email: t.String(),
-          roles: t.Array(t.String()),
-          prm: t.Record(t.String(), t.Number()),
-        }),
+    200: successResponse(t.Object({
+      accessToken: t.String(),
+      refreshToken: t.String(),
+      user: t.Object({
+        id: t.String(),
+        fullName: t.String(),
+        email: t.String(),
+        roles: t.Array(t.String()),
+        prm: t.Record(t.String(), t.Number()),
       }),
-    }),
+    })),
+    ...errorResponses([400, 401, 500]),
   },
 };
+
+
 
 // ── POST /v1/auth/logout ─────────────────────────────────────
 export const logoutDocs = {
@@ -51,7 +67,13 @@ export const logoutDocs = {
   body: t.Object({
     refreshToken: t.String({ error: 'Refresh Token wajib dikirim.' }),
   }),
+  response: {
+    200: successResponse(t.Object({})),
+    ...errorResponses([400, 401, 500]),
+  },
 };
+
+
 
 // ── POST /v1/auth/refresh-token ──────────────────────────────
 export const refreshTokenDocs = {
@@ -63,4 +85,13 @@ export const refreshTokenDocs = {
   body: t.Object({
     refreshToken: t.String({ error: 'Refresh Token wajib dikirim.' }),
   }),
+  response: {
+    200: successResponse(t.Object({
+      accessToken: t.String(),
+      refreshToken: t.String(),
+    })),
+    ...errorResponses([400, 401, 500]),
+  },
 };
+
+
