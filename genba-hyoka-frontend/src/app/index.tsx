@@ -52,7 +52,7 @@ export default function Index() {
   }
 
   if (isAuthenticated) {
-    return <Redirect href={"/(dashboard)/manager" as any} />;
+    return <Redirect href={"/(dashboard)" as any} />;
   }
 
   return <Redirect href={"/(auth)/login" as any} />;

@@ -1,4 +1,4 @@
-import { useAuthStore } from './authStore';
+import { useAuthStore, User } from './authStore';
 import * as SecureStore from 'expo-secure-store';
 
 jest.mock('expo-secure-store', () => ({
@@ -21,11 +21,18 @@ describe('authStore', () => {
   });
 
   it('should set auth correctly', async () => {
-    const user = { id: '1', fullName: 'Test User', email: 'test@example.com' };
+    const user: User = { 
+      id: '1', 
+      fullName: 'Test User', 
+      email: 'test@example.com',
+      roles: ['employee'],
+      prm: 8
+    };
     const accessToken = 'access-token';
     const refreshToken = 'refresh-token';
 
     await useAuthStore.getState().setAuth(user, accessToken, refreshToken);
+
 
     const state = useAuthStore.getState();
     expect(state.user).toEqual(user);
@@ -35,8 +42,15 @@ describe('authStore', () => {
   });
 
   it('should clear auth correctly', async () => {
-    const user = { id: '1', fullName: 'Test User', email: 'test@example.com' };
+    const user: User = { 
+      id: '1', 
+      fullName: 'Test User', 
+      email: 'test@example.com',
+      roles: ['employee'],
+      prm: 8
+    };
     await useAuthStore.getState().setAuth(user, 'at', 'rt');
+
 
     await useAuthStore.getState().clearAuth();
 

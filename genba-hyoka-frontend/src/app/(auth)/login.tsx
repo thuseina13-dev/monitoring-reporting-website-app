@@ -57,7 +57,7 @@ export default function LoginScreen() {
         native: false,
       });
 
-      // router.replace('/(dashboard)/manager' as any);
+      router.replace('/(dashboard)' as any);
     },
     onError: (error: any) => {
       const msg = error.response?.data?.message || 'Email atau password salah';

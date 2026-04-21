@@ -1,0 +1,21 @@
+import { Redirect } from 'expo-router';
+import { useAuthStore } from '../../store/authStore';
+
+export default function DashboardIndex() {
+  const { activeRole } = useAuthStore();
+
+  if (activeRole === 'admin' || activeRole === 'super_admin') {
+    return <Redirect href="/(dashboard)/admin" />;
+  }
+
+  if (activeRole === 'manager') {
+    return <Redirect href="/(dashboard)/manager" />;
+  }
+
+  if (activeRole === 'employee') {
+    return <Redirect href="/(dashboard)/employee" />;
+  }
+
+  // Default fallback if role is unknown
+  return <Redirect href="/(auth)/login" />;
+}
