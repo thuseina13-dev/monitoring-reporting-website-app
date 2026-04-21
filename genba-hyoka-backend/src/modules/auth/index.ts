@@ -1,12 +1,13 @@
 import { Elysia } from 'elysia';
 import { db } from '../../db';
-import { users, sessions, roles, permissions, userRoles, rolePermissions } from '../../db/schema';
+import { users, sessions, roles, userRoles } from '../../db/schema';
 import { createAuditLog } from '../../utils/auditLogger';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { AppError } from '../../utils/AppError';
 import { sendSuccess } from '../../utils/response';
 import { loginDocs, meDocs, logoutDocs, refreshTokenDocs } from './docs';
 import { jwt } from '@elysiajs/jwt';
+import { ROLE_PERMISSIONS, RoleCode } from './constants/permissions';
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '9h';
@@ -27,48 +28,47 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
     })
   )
 
-  // ── HELPER: Flaten Bitmask ──────────────────────────────────
+  // ── HELPER: Build Bitmask from Static Constants ───────────────
   .derive(async ({ }) => ({
     getAuthData: async (userId: string) => {
-      const userAuthData = await db
+      // 1. Ambil semua role yang dimiliki user
+      const userSelectedRoles = await db
         .select({ 
-          permissionCode: permissions.code, 
-          bitValue: permissions.bitValue,
           roleType: roles.type 
         })
         .from(userRoles)
         .innerJoin(roles, eq(userRoles.roleId, roles.id))
-        .innerJoin(rolePermissions, eq(roles.id, rolePermissions.roleId))
-        .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
         .where(eq(userRoles.userId, userId));
 
       const prm: Record<string, number> = {};
       const rolesSet = new Set<string>();
 
-      userAuthData.forEach((row) => {
-        // Flatten permissions menggunakan Bitwise OR
-        const modulePrefix = row.permissionCode.substring(0, 3).toUpperCase();
-        prm[modulePrefix] = (prm[modulePrefix] || 0) | row.bitValue;
-        
-        // Collect unique role types
-        if (row.roleType) {
-          rolesSet.add(row.roleType);
-        }
-      });
-
-      // Mapping role types to short codes based on Issue #27
+      // Mapping role types ke kode singkat (Issue #27 compatible)
       const roleMap: Record<string, string> = {
-        'super_admin': 'adm',
+        'super_admin': 'sup',
         'admin': 'adm',
         'manager': 'man',
         'employee': 'emp'
       };
 
-      const roleCodes = Array.from(rolesSet).map(type => roleMap[type] || type);
+      userSelectedRoles.forEach((row) => {
+        const type = row.roleType as string;
+        const shortCode = roleMap[type] || type;
+        rolesSet.add(shortCode);
 
-      return { prm, roles: roleCodes };
+        // 2. Gabungkan permissions dari konstanta statis menggunakan OR
+        const permissions = ROLE_PERMISSIONS[shortCode as RoleCode];
+        if (permissions) {
+          Object.entries(permissions).forEach(([module, bitmask]) => {
+            prm[module] = (prm[module] || 0) | (bitmask as number);
+          });
+        }
+      });
+
+      return { prm, roles: Array.from(rolesSet) };
     }
   }))
+
 
   // ── POST /login ─────────────────────────────────────────────
   .post(

@@ -25,8 +25,8 @@ export const listRolesDocs = {
 // ── POST /roles ─────────────────────────────────────────────
 export const createRoleDocs = {
   detail: {
-    summary: 'Tambah Role & Izin',
-    description: 'Membuat role baru beserta penugasan daftar izin. Membutuhkan izin ROL (Create).',
+    summary: 'Tambah Role Baru',
+    description: 'Membuat role baru dalam sistem. Membutuhkan izin ROL (Create).',
     tags: ['Roles'],
   },
   response: {
@@ -34,19 +34,16 @@ export const createRoleDocs = {
     ...errorResponses([400, 401, 403, 500]),
   },
   body: t.Object({
-
-
     name: t.String({ minLength: 3, error: 'Nama role minimal 3 karakter.' }),
     description: t.Optional(t.String()),
-    permissionIds: t.Array(t.String({ format: 'uuid' }), { error: 'Permission IDs harus berupa array UUID.' }),
   }),
 };
 
 // ── PUT /roles/:id ──────────────────────────────────────────
 export const updateRoleDocs = {
   detail: {
-    summary: 'Update Role & Sinkronisasi Izin',
-    description: 'Memperbarui data role dan melakukan Full Sync pada daftar izinnya. Membutuhkan izin ROL (Update).',
+    summary: 'Update Detail Role',
+    description: 'Memperbarui data dasar role. Membutuhkan izin ROL (Update).',
     tags: ['Roles'],
   },
   response: {
@@ -54,13 +51,11 @@ export const updateRoleDocs = {
     ...errorResponses([400, 401, 403, 404, 500]),
   },
   body: t.Object({
-
-
     name: t.Optional(t.String({ minLength: 3 })),
     description: t.Optional(t.String()),
-    permissionIds: t.Optional(t.Array(t.String({ format: 'uuid' }))),
   }),
 };
+
 
 // ── DELETE /roles/:id ───────────────────────────────────────
 export const deleteRoleDocs = {

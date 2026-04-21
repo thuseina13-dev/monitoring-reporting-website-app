@@ -1,5 +1,5 @@
 import { db } from './index';
-import { permissions, rolePermissions, roles, userRoles, users } from './schema';
+import { roles, userRoles, users } from './schema';
 import { sql } from 'drizzle-orm';
 
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
@@ -14,58 +14,27 @@ async function validateEnv() {
     console.log('✅ Konfigurasi .env valid.');
 }
 
-async function seedPermissions() {
-    console.log('--- Memulai Seeding 52 Izin Modul GENBA-HYOKA ---');
-
-    const modules = [
-        { code: 'USR', name: 'Users' },
-        { code: 'ROL', name: 'Roles' },
-        { code: 'PRM', name: 'Permissions' },
-        { code: 'CPY', name: 'Company Profile' },
-        { code: 'AUD', name: 'Audit Logs' },
-        { code: 'NTF', name: 'Notifications' },
-        { code: 'TDF', name: 'Task Definitions' },
-        { code: 'TAS', name: 'Task Assignments' },
-        { code: 'SUB', name: 'Submission Tasks' },
-        { code: 'PRB', name: 'Problem Reports' },
-        { code: 'REV', name: 'Manager Reviews' },
-        { code: 'TMP', name: 'Report Templates' },
-        { code: 'EVL', name: 'Evaluation Reports' },
+async function seedRoles() {
+    console.log('--- Sinkronisasi Roles ---');
+    const roleList = [
+        { name: 'Super Admin', type: 'super_admin', description: 'Pemegang akses penuh seluruh sistem' },
+        { name: 'Administrator', type: 'admin', description: 'Administrator sistem' },
+        { name: 'Manager', type: 'manager', description: 'Manager Area' },
+        { name: 'Employee', type: 'employee', description: 'Operator Lapangan' },
     ];
 
-    const methods = [
-        { method: 'GET', bit: 1, suffix: '(Read)' },
-        { method: 'POST', bit: 2, suffix: '(Create)' },
-        { method: 'PUT', bit: 4, suffix: '(Update)' },
-        { method: 'DELETE', bit: 8, suffix: '(Delete)' },
-    ] as const;
-
-    try {
-        const permissionData: any[] = [];
-        
-        for (const mod of modules) {
-            for (const met of methods) {
-                permissionData.push({
-                    code: mod.code,
-                    entityName: `${mod.name} - ${met.method} ${met.suffix}`,
-                    method: met.method,
-                    bitValue: met.bit,
-                });
-            }
-        }
-
-        console.log(`Inserting ${permissionData.length} permissions...`);
-        for (const p of permissionData) {
-            await db.insert(permissions)
-                .values(p)
-                .onConflictDoNothing({ target: [permissions.code, permissions.method] });
-        }
-
-        console.log('✅ Seeding Izin berhasil!');
-    } catch (error) {
-        console.error('❌ Seeding Izin gagal:', error);
-        throw error;
+    for (const r of roleList) {
+        await db.insert(roles)
+            .values(r as any)
+            .onConflictDoUpdate({
+                target: roles.name,
+                set: {
+                    type: r.type as any,
+                    description: r.description
+                }
+            });
     }
+    console.log('✅ Seeding Roles berhasil!');
 }
 
 async function syncSuperAdmin() {
@@ -73,23 +42,11 @@ async function syncSuperAdmin() {
 
     try {
         await db.transaction(async (tx) => {
-            // 1. Pastikan Role Super Admin ada (Idempoten)
-            const [superAdminRole] = await tx.insert(roles)
-                .values({
-                    name: 'Super Admin',
-                    type: 'super_admin',
-                    description: 'Pemegang akses penuh seluruh sistem'
-                })
-                .onConflictDoUpdate({
-                    target: roles.name,
-                    set: { 
-                        type: 'super_admin',
-                        description: 'Pemegang akses penuh seluruh sistem' 
-                    }
-                })
-                .returning();
+            // 1. Dapatkan Role Super Admin
+            const [superAdminRole] = await tx.select().from(roles).where(sql`type = 'super_admin'`).limit(1);
+            if (!superAdminRole) throw new Error('Role super_admin tidak ditemukan. Jalankan seedRoles dulu.');
 
-            // 2. Sinkronisasi User (Hanya Email & Password, Reset Password dari .env)
+            // 2. Sinkronisasi User
             const hashedPassword = await Bun.password.hash(SUPER_ADMIN_PASSWORD!);
             
             const [adminUser] = await tx.insert(users)
@@ -102,7 +59,7 @@ async function syncSuperAdmin() {
                 .onConflictDoUpdate({
                     target: users.email,
                     set: { 
-                        password: hashedPassword, // Emergency Reset Capability
+                        password: hashedPassword,
                         fullName: 'Sistem Administrator'
                     }
                 })
@@ -116,26 +73,11 @@ async function syncSuperAdmin() {
                 })
                 .onConflictDoNothing();
 
-            // 4. Sinkronisasi Seluruh Hak Akses (Bulk)
-            const allPermissions = await tx.select({ id: permissions.id }).from(permissions);
-            
-            if (allPermissions.length > 0) {
-                const rolePermsData = allPermissions.map((p) => ({
-                    roleId: superAdminRole.id,
-                    permissionId: p.id
-                }));
-
-                await tx.insert(rolePermissions)
-                    .values(rolePermsData)
-                    .onConflictDoNothing();
-            }
-
             console.log('✅ Sinkronisasi Super Admin berhasil!');
             console.log(`📧 Email: ${SUPER_ADMIN_EMAIL}`);
-            console.log('🔑 Password: (Dikonfigurasi di .env)');
         });
-    } catch (error) {
-        console.error('❌ Sinkronisasi Super Admin gagal:', error);
+    } catch (error: any) {
+        console.error('❌ Sinkronisasi Super Admin gagal:', error.message);
         throw error;
     }
 }
@@ -143,7 +85,7 @@ async function syncSuperAdmin() {
 async function main() {
     try {
         await validateEnv();
-        await seedPermissions();
+        await seedRoles();
         await syncSuperAdmin();
         console.log('\n--- PROSES SEEDING SELESAI ---');
         process.exit(0);
@@ -153,3 +95,4 @@ async function main() {
 }
 
 main();
+

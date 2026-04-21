@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from "bun:test";
+import { describe, expect, it, mock, spyOn } from "bun:test";
 import { Elysia } from 'elysia';
 
 // ── Mock Database ───────────────────────────────────────────
@@ -24,8 +24,9 @@ const createMockChain = (value: any) => ({
 mock.module("../db", () => ({
   db: {
     select: (fields: any) => {
-        // Mock and logic based on table fields
-        if (fields && fields.permissionCode) return createMockChain([{ permissionCode: 'USR_CREATE', bitValue: 1, roleType: 'admin' }]);
+        // Jika sedang mengambil roleType (untuk getAuthData)
+        if (fields && fields.roleType) return createMockChain([{ roleType: 'admin' }]);
+        // Default untuk ambil data user
         return createMockChain([mockUser]);
     },
     insert: () => createMockChain([{ id: 'session-1' }]),
@@ -38,31 +39,21 @@ mock.module("../db", () => ({
 // ── Import Module ────────────────────────────────────────────
 import { authModule } from '../modules/auth';
 import { errorHandler } from '../middlewares/errorHandler';
+import { db } from '../db';
 
 const app = new Elysia().use(errorHandler).use(authModule);
 
 // ── Tests ────────────────────────────────────────────────────
-describe('Auth Module - Unit Test /v1/auth', () => {
-  it('POST /v1/auth/login > Berhasil login dan dapat accessToken & refreshToken', async () => {
-    const response = await app.handle(
-      new Request('http://localhost/v1/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'john@example.com', password: 'secret123' }),
-      })
-    );
+describe('Auth Module - Issue #33 RBAC Unit Test', () => {
+  it('Scenario 1: Role emp harus dapat bitmask 15 di modul SUB', async () => {
+    const selectSpy = spyOn(db, 'select');
+    // Implementasi pintar: bedakan query user vs query role
+    selectSpy.mockImplementation(((fields: any) => {
+        if (fields && fields.roleType) return createMockChain([{ roleType: 'employee' }]) as any;
+        return createMockChain([mockUser]) as any;
+    }) as any);
 
-    const body = await response.json();
-    expect(response.status).toBe(200);
-    expect(body.data.accessToken).toBeDefined();
-    expect(body.data.refreshToken).toBeDefined();
-    expect(body.data.user.fullName).toBe('John Doe');
-    expect(body.data.user.roles).toContain('adm');
-    expect(body.data.user.prm.USR).toBe(1);
-  });
 
-  it('GET /v1/auth/me > Berhasil verifikasi token (Status 200)', async () => {
-    // Ambil token dari login dulu
     const loginRes = await app.handle(
       new Request('http://localhost/v1/auth/login', {
         method: 'POST',
@@ -70,23 +61,58 @@ describe('Auth Module - Unit Test /v1/auth', () => {
         body: JSON.stringify({ email: 'john@example.com', password: 'secret123' }),
       })
     );
-    const { data } = await loginRes.json();
+    const body = await loginRes.json();
     
-    if (!data) {
-        console.error('Login failed in test setup');
-    }
+    expect(body.data.user.roles).toContain('emp');
+    expect(body.data.user.prm.SUB).toBe(15);
+    
+    selectSpy.mockRestore();
+  });
 
-    const response = await app.handle(
-      new Request('http://localhost/v1/auth/me', {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${data.accessToken}` },
+  it('Scenario 2: Role man harus dapat bitmask 1 di modul USR', async () => {
+    const selectSpy = spyOn(db, 'select');
+    selectSpy.mockImplementation(((fields: any) => {
+        if (fields && fields.roleType) return createMockChain([{ roleType: 'manager' }]) as any;
+        return createMockChain([mockUser]) as any;
+    }) as any);
+
+    const loginRes = await app.handle(
+      new Request('http://localhost/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'john@example.com', password: 'secret123' }),
       })
     );
+    const body = await loginRes.json();
+    
+    expect(body.data.user.roles).toContain('man');
+    expect(body.data.user.prm.USR).toBe(1);
+    
+    selectSpy.mockRestore();
+  });
 
-    const body = await response.json();
-    expect(response.status).toBe(200);
-    expect(body.data.sub).toBe('user-uuid-1');
-    expect(body.data.prm.USR).toBe(1); 
-    expect(body.data.roles).toContain('adm');
+  it('Scenario 3: Multi-role adm & man harus mendapatkan gabungan bitmask (OR)', async () => {
+    const selectSpy = spyOn(db, 'select');
+    selectSpy.mockImplementation(((fields: any) => {
+        if (fields && fields.roleType) return createMockChain([{ roleType: 'admin' }, { roleType: 'manager' }]) as any;
+        return createMockChain([mockUser]) as any;
+    }) as any);
+
+    const loginRes = await app.handle(
+      new Request('http://localhost/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'john@example.com', password: 'secret123' }),
+      })
+    );
+    const body = await loginRes.json();
+    
+    expect(body.data.user.roles).toContain('adm');
+    expect(body.data.user.roles).toContain('man');
+    expect(body.data.user.prm.USR).toBe(15); // Admin (15) OR Manager (1)
+    
+    selectSpy.mockRestore();
   });
 });
+
+

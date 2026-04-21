@@ -1,4 +1,3 @@
-import { describe, expect, it, mock } from "bun:test";
 import { Elysia } from 'elysia';
 
 // ── Mock Database Robust Helper ──────────────────────────────
@@ -46,6 +45,39 @@ async function getTestToken(): Promise<string> {
   return token;
 }
 
+// ── Mock Database ───────────────────────────────────────────
+mock.module("../db", () => ({
+  db: {
+    select: (fields: any) => {
+        if (fields && fields.count) return createMockChain([{ count: 1 }]);
+        if (fields && fields.roleId) return createMockChain([{ userId: 'user-uuid-1', roleId: 'role-1', roleName: 'Admin' }]);
+        // Jika sedang mencari user spesifik (misal PUT/DELETE)
+        if (fields && fields.id) return createMockChain([{ id: 'user-uuid-1' }]);
+        
+        // DEFAULT: Return empty untuk POST (email check)
+        // Kecuali jika test butuh data list
+        return createMockChain([]); 
+    },
+
+    insert: () => createMockChain([mockUsers[0]]),
+    update: () => createMockChain([mockUsers[0]]),
+    delete: () => createMockChain([]),
+    transaction: async (fn: Function) => fn({
+        insert: () => createMockChain([mockUsers[0]]),
+        select: (fields: any) => {
+          // Default untuk pengecekan dalam transaksi (biasanya link role)
+          return createMockChain([]);
+        },
+        update: () => createMockChain([mockUsers[0]]),
+        delete: () => createMockChain([]),
+    }),
+  },
+  checkConnection: () => Promise.resolve(true)
+}));
+
+import { describe, expect, it, mock, spyOn } from "bun:test";
+import { db } from "../db";
+
 // ── Import Modules ───────────────────────────────────────────
 import { usersModule } from '../modules/user-management/users';
 import { errorHandler } from '../middlewares/errorHandler';
@@ -55,19 +87,9 @@ const app = new Elysia().use(errorHandler).use(usersModule);
 // ── Tests ────────────────────────────────────────────────────
 describe('Users Module - Unit Test /v1/users', () => {
   it('Harus mengembalikan daftar users (200)', async () => {
-    mock.module("../db", () => ({
-      db: {
-        select: (fields: any) => {
-            if (fields && fields.count) return createMockChain([{ count: 1 }]);
-            if (fields && fields.roleId) return createMockChain([{ userId: 'user-uuid-1', roleId: 'role-1', roleName: 'Admin' }]);
-            return createMockChain(mockUsers);
-        },
-      },
-      checkConnection: () => Promise.resolve(true)
-    }));
-
     const token = await getTestToken();
     const response = await app.handle(
+
       new Request('http://localhost/v1/users', {
         method: 'GET',
         headers: { Authorization: `Bearer ${token}` },
@@ -79,20 +101,6 @@ describe('Users Module - Unit Test /v1/users', () => {
   });
 
   it('Harus berhasil mendaftarkan user baru dengan roleIds (201)', async () => {
-    mock.module("../db", () => ({
-      db: {
-        select: (fields: any) => {
-            // Mengembalikan [] agar pengecekan "pakaikan email sudah terdaftar" lolos
-            return createMockChain([]);
-        },
-        transaction: async (fn: Function) => fn({
-            insert: () => createMockChain([mockUsers[0]]),
-            // Pastikan select di dalam transaction (jika ada) juga aman
-            select: () => createMockChain([]),
-        }),
-      },
-      checkConnection: () => Promise.resolve(true)
-    }));
 
     const token = await getTestToken();
     const response = await app.handle(
@@ -113,15 +121,6 @@ describe('Users Module - Unit Test /v1/users', () => {
   });
 
   it('POST /v1/users > Harus berhasil daftar meskipun roleIds kosong (201)', async () => {
-    mock.module("../db", () => ({
-      db: {
-        select: () => createMockChain([]), 
-        transaction: async (fn: Function) => fn({
-            insert: () => createMockChain([{ id: 'new-user-id' }]),
-        }),
-      },
-      checkConnection: () => Promise.resolve(true)
-    }));
 
     const token = await getTestToken();
     const response = await app.handle(
@@ -140,18 +139,6 @@ describe('Users Module - Unit Test /v1/users', () => {
   });
 
   it('PUT /v1/users/:id > Harus blokir jika user terhubung ke role super_admin (403)', async () => {
-    mock.module("../db", () => ({
-      db: {
-        select: (fields: any) => {
-          // Mock pertama: cek existing user
-          if (fields && fields.id) return createMockChain([{ id: 'user-super' }]);
-          // Mock kedua: cek link ke super_admin (innerJoin)
-          if (fields && fields.roleId) return createMockChain([{ roleId: 'role-super' }]);
-          return createMockChain([]);
-        },
-      },
-      checkConnection: () => Promise.resolve(true)
-    }));
 
     const token = await getTestToken();
     const response = await app.handle(
@@ -167,18 +154,6 @@ describe('Users Module - Unit Test /v1/users', () => {
   });
 
   it('DELETE /v1/users/:id > Harus blokir jika user terhubung ke role super_admin (403)', async () => {
-    mock.module("../db", () => ({
-      db: {
-        transaction: async (fn: Function) => fn({
-          select: (fields: any) => {
-            if (fields && fields.id) return createMockChain([{ id: 'user-super' }]);
-            if (fields && fields.roleId) return createMockChain([{ roleId: 'role-super' }]);
-            return createMockChain([]);
-          },
-        }),
-      },
-      checkConnection: () => Promise.resolve(true)
-    }));
 
     const token = await getTestToken();
     const response = await app.handle(

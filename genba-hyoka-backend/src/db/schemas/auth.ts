@@ -1,8 +1,8 @@
 import { pgTable, uuid, varchar, integer, boolean, text, timestamp, pgEnum, index, uniqueIndex, unique } from 'drizzle-orm/pg-core';
 import { auditColumns } from './_utils/audit';
 
-export const methodEnum = pgEnum('method', ['GET', 'POST', 'PUT', 'DELETE']);
 export const genderEnum = pgEnum('gender', ['male', 'female']);
+
 export const roleTypeEnum = pgEnum('role_type', ['super_admin', 'admin', 'manager', 'employee']);
 
 export const roles = pgTable('roles', {
@@ -30,17 +30,7 @@ export const users = pgTable('users', {
   companyProfileIdIdx: index('company_profile_id_idx').on(table.companyProfileId),
 }));
 
-export const permissions = pgTable('permissions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  code: varchar('code', { length: 100 }).notNull(), // Atribut tambahan untuk kemudahan baca
-  entityName: varchar('entity_name', { length: 255 }).notNull(),
-  method: methodEnum('method').notNull(),
-  bitValue: integer('bit_value').notNull(),
-  ...auditColumns,
-}, (table) => ({
-  entityNameMethodIdx: index('entity_name_method_idx').on(table.entityName, table.method),
-  codeMethodUnq: unique('code_method_unq').on(table.code, table.method),
-}));
+
 
 export const userRoles = pgTable('user_roles', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -52,15 +42,7 @@ export const userRoles = pgTable('user_roles', {
   unq: unique().on(table.userId, table.roleId),
 }));
 
-export const rolePermissions = pgTable('role_permissions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  roleId: uuid('role_id').notNull().references(() => roles.id),
-  permissionId: uuid('permission_id').notNull().references(() => permissions.id),
-  ...auditColumns,
-}, (table) => ({
-  rolePermissionIdx: index('role_prm_idx').on(table.roleId, table.permissionId),
-  unq: unique().on(table.roleId, table.permissionId),
-}));
+
 
 export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
