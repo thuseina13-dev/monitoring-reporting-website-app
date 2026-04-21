@@ -2,7 +2,11 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db';
 import { users, sessions, roles, userRoles } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, inArray } from 'drizzle-orm';
+import { eq, and, count, inArray, or, ilike, SQL, gt, asc } from 'drizzle-orm';
+
+import { buildFilters } from '../../../utils/filter';
+
+
 import { AppError } from '../../../utils/AppError';
 import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
 import { jwtGuard, checkPermission, BIT } from '../../../middlewares/jwtGuard';
@@ -33,17 +37,53 @@ export const usersModule = new Elysia({ prefix: '/v1/users' }) // Mengikuti stan
     async ({ query, currentUser }) => {
       checkPermission(currentUser.prm, 'USR', BIT.READ);
 
+      // Validasi: Tidak boleh menggunakan page dan cursor secara bersamaan
+      if (query.page && query.cursor) {
+        throw new AppError(400, 'Paginasi page dan cursor tidak dapat digunakan secara bersamaan.');
+      }
+
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
-      const offset = (page - 1) * limit;
+      const offset = query.cursor ? undefined : (page - 1) * limit;
 
-      // 1. Ambil Data User (Paginasi)
-      const userList = await db.select(userPublicFields).from(users).limit(limit).offset(offset);
-      const [totalCount] = await db.select({ count: count() }).from(users);
+
+
+
+      // 1. Build Dynamic Filters using Helper
+      const filters = buildFilters(users, query, [
+        'fullName', 
+        'email', 
+        'isActive', 
+        'gender', 
+        'address', 
+        'phoneNo'
+      ]);
+
+      // 2. Tambahkan Filter Cursor jika ada
+      if (query.cursor) {
+        filters.push(gt(users.id, query.cursor));
+      }
+
+      const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
+      // 3. Ambil Data User (Paginasi)
+      const userList = await db
+        .select(userPublicFields)
+        .from(users)
+        .where(whereClause)
+        .orderBy(asc(users.id)) // Wajib order by kolom cursor
+        .limit(limit)
+        .offset(offset as any);
+
+      const [totalCount] = await db
+        .select({ count: count() })
+        .from(users)
+        .where(whereClause);
 
       if (userList.length === 0) {
         return sendSuccessPagination([], { total: 0, current_page: page, last_page: 0, limit });
       }
+
 
       // 2. Ambil Roles untuk user-user tersebut
       const userIds = userList.map(u => u.id);
@@ -66,12 +106,26 @@ export const usersModule = new Elysia({ prefix: '/v1/users' }) // Mengikuti stan
       }));
 
       const total = Number(totalCount.count);
-      return sendSuccessPagination(dataWithRoles, {
-        total,
-        current_page: page,
-        last_page: Math.ceil(total / limit),
-        limit,
-      });
+      const nextCursor = userList.length === limit ? userList[userList.length - 1].id : null;
+
+      // Kustomisasi Output Meta berdasarkan mode paginasi
+      const meta: any = { limit };
+
+      if (query.cursor) {
+        // Mode Cursor
+        meta.next_cursor = nextCursor;
+        meta.has_more = !!nextCursor;
+      } else {
+        // Mode Offset (Traditional)
+        meta.total = total;
+        meta.current_page = page;
+        meta.last_page = Math.ceil(total / limit);
+        meta.has_more = page < meta.last_page;
+      }
+
+      return sendSuccessPagination(dataWithRoles, meta, 'Data retrieved successfully');
+
+
     },
     listUsersDocs
   )

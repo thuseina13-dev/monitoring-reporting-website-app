@@ -11,7 +11,9 @@ const createMockChain = (value: any) => {
     from: () => chain,
     limit: () => chain,
     offset: () => chain,
+    orderBy: () => chain,
     where: () => chain,
+
     innerJoin: () => chain,
     leftJoin: () => chain,
     values: () => chain,

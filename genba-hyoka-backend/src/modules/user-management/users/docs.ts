@@ -1,4 +1,7 @@
 import { t } from 'elysia';
+import { errorSchema, successResponse, successListResponse, paginatedResponse, errorResponses } from '../../../utils/schema';
+
+
 
 // ── GET /users ──────────────────────────────────────────────
 export const listUsersDocs = {
@@ -7,17 +10,27 @@ export const listUsersDocs = {
     description: 'Mengambil daftar pengguna dengan paginasi dan data role. Membutuhkan izin USR (Read).',
     tags: ['Users'],
     security: [{ bearerAuth: [] }],
-    responses: {
-      200: { description: 'Daftar pengguna berhasil diambil' },
-      401: { description: 'Token tidak valid' },
-      403: { description: 'Tidak memiliki izin USR' },
-    }
+  },
+  response: {
+    200: paginatedResponse(t.Any()),
+    ...errorResponses([401, 403, 500]),
   },
   query: t.Object({
+
+
     page: t.Optional(t.Numeric({ minimum: 1, default: 1 })),
     limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100, default: 10 })),
+    search: t.Optional(t.String({ description: 'Cari nama/email (Case-insensitive)' })),
+    isActive: t.Optional(t.String({ description: 'Filter status true/false' })),
+    phoneNo: t.Optional(t.String({ description: 'Filter nomor telepon' })),
+    gender: t.Optional(t.String({ description: 'Filter gender (male/female)' })),
+    address: t.Optional(t.String({ description: 'Filter alamat (Partial match)' })),
+    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor. Data diurutkan via ID ASC.' })),
   }),
 };
+
+
+
 
 // ── GET /users/:id ──────────────────────────────────────────
 export const getUserDocs = {
@@ -26,12 +39,27 @@ export const getUserDocs = {
     description: 'Mengambil detail pengguna termasuk daftar role-nya.',
     tags: ['Users'],
     security: [{ bearerAuth: [] }],
-    responses: {
-      200: { description: 'Detail pengguna' },
-      404: { description: 'User tidak ditemukan' },
-    }
+  },
+  response: {
+    200: successResponse(t.Object({
+      id: t.String(),
+      fullName: t.String(),
+      email: t.String(),
+      phoneNo: t.Union([t.String(), t.Null()]),
+      address: t.Union([t.String(), t.Null()]),
+      gender: t.Union([t.String(), t.Null()]),
+      isActive: t.Boolean(),
+      roles: t.Array(t.Object({
+        id: t.String(),
+        name: t.String(),
+      })),
+    })),
+
+    ...errorResponses([401, 403, 404, 500]),
   },
 };
+
+
 
 // ── POST /users ─────────────────────────────────────────────
 export const registerUserDocs = {
@@ -40,12 +68,14 @@ export const registerUserDocs = {
     description: 'Menambahkan pengguna baru beserta penugasan role. Membutuhkan izin USR (Create).',
     tags: ['Users'],
     security: [{ bearerAuth: [] }],
-    responses: {
-      201: { description: 'Pengguna berhasil didaftarkan' },
-      400: { description: 'Email sudah terdaftar' },
-    }
+  },
+  response: {
+    201: successResponse(t.Optional(t.Any())),
+    ...errorResponses([400, 401, 403, 500]),
   },
   body: t.Object({
+
+
     fullName: t.String({ minLength: 3, error: 'Nama lengkap minimal 3 karakter.' }),
     email: t.String({ format: 'email', error: 'Format email tidak valid.' }),
     password: t.String({ minLength: 8, error: 'Password minimal 8 karakter.' }),
@@ -60,12 +90,14 @@ export const updateUserDocs = {
     description: 'Memperbarui data profil dan menyinkronkan (Full Sync) daftar role. Membutuhkan izin USR (Update).',
     tags: ['Users'],
     security: [{ bearerAuth: [] }],
-    responses: {
-      200: { description: 'Profil berhasil diperbarui' },
-      404: { description: 'User tidak ditemukan' },
-    }
+  },
+  response: {
+    200: successResponse(t.Optional(t.Any())),
+    ...errorResponses([400, 401, 403, 404, 500]),
   },
   body: t.Object({
+
+
     fullName: t.Optional(t.String({ minLength: 3 })),
     email: t.Optional(t.String({ format: 'email' })),
     password: t.Optional(t.String({ minLength: 8 })),
@@ -85,4 +117,10 @@ export const deleteUserDocs = {
     tags: ['Users'],
     security: [{ bearerAuth: [] }],
   },
+  response: {
+    200: successResponse(t.Null()),
+    ...errorResponses([401, 403, 404, 500]),
+  },
 };
+
+
