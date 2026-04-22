@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   SizableText,
@@ -21,18 +21,33 @@ import { loginSchema, LoginFormInputs } from '../../utils/validations';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '../../services/api/authService';
 import { useAuthStore } from '../../store/authStore';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Lock, Mail, Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useToastController } from '@tamagui/toast';
 import { COLORS } from '../../constants/theme';
 import LogoTumpuk from '../../assets/images/logo-tumpuk-compress-removebg-preview.png';
 
 export default function LoginScreen() {
-  console.log('Genba Logo Asset Path:', LogoTumpuk);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
   const toast = useToastController();
   const [showPassword, setShowPassword] = useState(false);
+  const params = useLocalSearchParams<{ logout?: string }>();
+
+  // Dengar parameter kedatangan (lemparan pesan dari router URL navigation dasbor sebelumnya)
+  useEffect(() => {
+    if (params.logout) {
+      setTimeout(() => {
+        toast.show('Logout Berhasil', {
+          message: params.logout,
+          native: false,
+        });
+      }, 100);
+      
+      // Bersihkan parameter dari URL agar ketika direfresh popup tidak terulang
+      router.replace('/(auth)/login');
+    }
+  }, [params.logout]);
 
   const {
     control,

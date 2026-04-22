@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Redirect, useRouter } from 'expo-router';
+import { Redirect, useRouter, useRootNavigationState } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { storage } from '../utils/storage';
 import { Spinner, YStack } from 'tamagui';
@@ -9,6 +9,7 @@ import { authService } from '../services/api/authService';
 export default function Index() {
   const { isAuthenticated, setAuth, clearAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
+  const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -43,7 +44,7 @@ export default function Index() {
     checkAuth();
   }, []);
 
-  if (isLoading) {
+  if (isLoading || !rootNavigationState?.key) {
     return (
       <YStack f={1} jc="center" ai="center" bg="$background">
         <Spinner size="large" />

@@ -1,8 +1,11 @@
-import { Redirect } from 'expo-router';
+import { Redirect, useRootNavigationState } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 
 export default function DashboardIndex() {
   const { activeRole } = useAuthStore();
+  const rootNavigationState = useRootNavigationState();
+
+  if (!rootNavigationState?.key) return null;
 
   if (activeRole === 'admin' || activeRole === 'super_admin') {
     return <Redirect href="/(dashboard)/admin" />;
