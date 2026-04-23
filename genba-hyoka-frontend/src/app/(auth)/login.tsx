@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   SizableText,
@@ -13,7 +13,7 @@ import {
   Paragraph,
   Label
 } from 'tamagui';
-import { Image as RNImage } from 'react-native';
+import { Image as RNImage, Platform } from 'react-native';
 import { LinearGradient } from 'tamagui/linear-gradient';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,18 +21,35 @@ import { loginSchema, LoginFormInputs } from '../../utils/validations';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '../../services/api/authService';
 import { useAuthStore } from '../../store/authStore';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Lock, Mail, Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useToastController } from '@tamagui/toast';
 import { COLORS } from '../../constants/theme';
 import LogoTumpuk from '../../assets/images/logo-tumpuk-compress-removebg-preview.png';
 
+
+
 export default function LoginScreen() {
-  console.log('Genba Logo Asset Path:', LogoTumpuk);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
   const toast = useToastController();
   const [showPassword, setShowPassword] = useState(false);
+  const params = useLocalSearchParams<{ logout?: string }>();
+
+  // Dengar parameter kedatangan (lemparan pesan dari router URL navigation dasbor sebelumnya)
+  useEffect(() => {
+    if (params.logout) {
+      setTimeout(() => {
+        toast.show('Logout Berhasil', {
+          message: params.logout,
+          native: false,
+        });
+      }, 100);
+      
+      // Bersihkan parameter dari URL agar ketika direfresh popup tidak terulang
+      router.replace('/(auth)/login');
+    }
+  }, [params.logout]);
 
   const {
     control,
@@ -57,7 +74,7 @@ export default function LoginScreen() {
         native: false,
       });
 
-      // router.replace('/(dashboard)/manager' as any);
+      router.replace('/(dashboard)' as any);
     },
     onError: (error: any) => {
       const msg = error.response?.data?.message || 'Email atau password salah';
@@ -70,6 +87,7 @@ export default function LoginScreen() {
   });
 
   const onSubmit = (data: LoginFormInputs) => {
+    console.log("Submit ditekan dengan data:", data);
     loginMutation.mutate(data);
   };
 
@@ -89,7 +107,7 @@ export default function LoginScreen() {
           {/* Logo Section */}
           <View ai="center" jc="center" h={180} w="100%">
             <RNImage
-              source={LogoTumpuk}
+              source={require('../../assets/images/logo-tumpuk-compress-removebg-preview.png')}
               style={{ width: 300, height: 180 }}
               resizeMode="contain"
             />
@@ -176,7 +194,7 @@ export default function LoginScreen() {
               mt="$4"
               h={55}
               br="$3"
-              onPress={handleSubmit(onSubmit)}
+              onPress={() => handleSubmit(onSubmit)()}
               disabled={loginMutation.isPending}
               bg="transparent"
               p={0}
