@@ -41,41 +41,38 @@ const mapUserRoles = (userRoles: string[]) => {
   return mappedRoles;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  activeRole: null,
-  accessToken: null,
-  isAuthenticated: false,
-  roles: [],
+export const useAuthStore = create<AuthState>((set): AuthState => ({
+    user: null,
+    activeRole: null,
+    accessToken: null,
+    isAuthenticated: false,
+    roles: [],
+    setAuth: async (user: User, accessToken: string, refreshToken: string) => {
+      await storage.setItem('refreshToken', refreshToken);
+      // Set first role as default active role if available    
+      const isSuperAdmin = user?.roles?.includes('sup')
+      const userRoles = mapUserRoles(user?.roles)
+      let activeRole = null
+      if (isSuperAdmin) {
+        activeRole = 'admin';
+      } else {
+        activeRole = user.roles && user.roles.length > 0 ? user.roles[0] : null;
+      }
 
-  setAuth: async (user, accessToken, refreshToken) => {
-    await storage.setItem('refreshToken', refreshToken);
-    // Set first role as default active role if available    
-    const isSuperAdmin = user?.roles?.includes('sup')
-    const userRoles = mapUserRoles(user?.roles)
-    let activeRole = null
-    if (isSuperAdmin) {
-      activeRole = 'admin';
-    } else {
-      activeRole = user.roles && user.roles.length > 0 ? user.roles[0] : null;
-    }
-
-    console.log({ user, accessToken, isAuthenticated: true, activeRole, roles: userRoles })
-    set({ user, accessToken, isAuthenticated: true, activeRole, roles: userRoles });
-  },
-
-  updateAccessToken: async (accessToken, refreshToken) => {
-    await storage.setItem('refreshToken', refreshToken);
-    set({ accessToken });
-  },
-
-  setActiveRole: (role) => {
-    set({ activeRole: role });
-  },
-
-  clearAuth: async () => {
-    await storage.removeItem('refreshToken');
-    set({ user: null, accessToken: null, isAuthenticated: false, activeRole: null, roles: [] });
-  },
-}));
+      console.log({ user, accessToken, isAuthenticated: true, activeRole, roles: userRoles })
+      set({ user, accessToken, isAuthenticated: true, activeRole, roles: userRoles });
+    },
+    updateAccessToken: async (accessToken: string , refreshToken: string) => {
+      await storage.setItem('refreshToken', refreshToken);
+      set({ accessToken });
+    },
+    setActiveRole: (role: string) => {
+      set({ activeRole: role });
+    },
+    clearAuth: async () => {
+      await storage.removeItem('refreshToken');
+      set({ user: null, accessToken: null, isAuthenticated: false, activeRole: null, roles: [] });
+    },
+  })
+);
 

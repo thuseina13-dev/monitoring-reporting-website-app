@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, YStack, XStack, ScrollView, Card, Circle, Button, useToastController } from 'tamagui';
+import { View, Text, YStack, XStack, ScrollView, Card, Button, useToastController } from 'tamagui';
 import { useWindowDimensions } from 'react-native';
 import { useAuthStore } from '../../../store/authStore';
 import { MENU_ITEMS, ROLE_BIT } from '../../../config/menu';
@@ -9,6 +9,7 @@ import { LogOut, ClipboardList, AlertTriangle, CheckSquare } from '@tamagui/luci
 import { storage } from '../../../utils/storage';
 import { authService } from '../../../services/api/authService';
 import { COLORS } from '../../../constants/theme';
+import { useLogout } from '@/hooks/auth/useLogout';
 
 export default function EmployeeDashboard() {
   const { user, clearAuth } = useAuthStore();
@@ -17,25 +18,8 @@ export default function EmployeeDashboard() {
   const isMobile = width < 768;
   const numColumns = isMobile ? 4 : 8;
   const itemWidth = isMobile ? '23%' : '11%';
-
-  const toast = useToastController();
-
-  const handleLogout = async () => {
-    try {
-      const refreshToken = await storage.getItem('refreshToken');
-      if (refreshToken) {
-        await authService.logout(refreshToken);
-      }
-      
-      const msg = `Sampai jumpa, ${user?.fullName}`;
-      await clearAuth();
-      router.replace({ pathname: '/(auth)/login', params: { logout: msg } });
-    } catch (error) {
-      console.error('Logout API failed:', error);
-    }
-  };
-
   const employeeMenus = MENU_ITEMS.filter(item => (item.requiredRoleValue & ROLE_BIT.EMPLOYEE) !== 0);
+  const handleActionLogout = useLogout();
 
   const getIcon = (title: string) => {
     switch (title) {
@@ -85,7 +69,7 @@ export default function EmployeeDashboard() {
                size="$3" 
                backgroundColor="transparent" 
                icon={<LogOut color={COLORS.warning} size={18} />} 
-               onPress={handleLogout}
+               onPress={handleActionLogout}
                borderWidth={0}
                pressStyle={{ backgroundColor: '$red2', opacity: 0.7 }}
             >

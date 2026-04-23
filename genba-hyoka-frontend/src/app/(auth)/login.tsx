@@ -13,7 +13,7 @@ import {
   Paragraph,
   Label
 } from 'tamagui';
-import { Image as RNImage } from 'react-native';
+import { Image as RNImage, Platform } from 'react-native';
 import { LinearGradient } from 'tamagui/linear-gradient';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +26,8 @@ import { Lock, Mail, Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useToastController } from '@tamagui/toast';
 import { COLORS } from '../../constants/theme';
 import LogoTumpuk from '../../assets/images/logo-tumpuk-compress-removebg-preview.png';
+
+
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -85,6 +87,7 @@ export default function LoginScreen() {
   });
 
   const onSubmit = (data: LoginFormInputs) => {
+    console.log("Submit ditekan dengan data:", data);
     loginMutation.mutate(data);
   };
 
@@ -104,7 +107,7 @@ export default function LoginScreen() {
           {/* Logo Section */}
           <View ai="center" jc="center" h={180} w="100%">
             <RNImage
-              source={LogoTumpuk}
+              source={typeof LogoTumpuk === 'string' ? { uri: LogoTumpuk } : LogoTumpuk}
               style={{ width: 300, height: 180 }}
               resizeMode="contain"
             />
@@ -191,7 +194,7 @@ export default function LoginScreen() {
               mt="$4"
               h={55}
               br="$3"
-              onPress={handleSubmit(onSubmit)}
+              onPress={() => handleSubmit(onSubmit)()}
               disabled={loginMutation.isPending}
               bg="transparent"
               p={0}

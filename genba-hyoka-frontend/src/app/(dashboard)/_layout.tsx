@@ -5,18 +5,27 @@ import { useAuthStore } from '../../store/authStore';
 import { BottomNav } from '../../components/layout/BottomNav';
 import { useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
+import { useCheckAuth } from '@/hooks/auth/useCheckAuth';
 
 export default function DashboardLayout() {
-  const { isAuthenticated, user, activeRole } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const router = useRouter();
+  const { isChecking, checkAuth} = useCheckAuth();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace('/(auth)/login');
-    }
-  }, [isAuthenticated]);
+    const verifySession = async () => {
+      if (!isAuthenticated || !user) {
+        const isValid = await checkAuth();
+        if (!isValid) {
+          router.replace('/(auth)/login');
+        }
+      }
+    };
+    verifySession();
+  }, [isAuthenticated, user, checkAuth, router]);
 
-  if (!isAuthenticated || !user) {
+  // Selama masih ngecek API atau belum ada data user, tahan layar dengan Spinner
+  if (isChecking || !isAuthenticated || !user) {
     return (
       <View flex={1} justifyContent="center" alignItems="center">
         <Spinner size="large" color="$green10" />
