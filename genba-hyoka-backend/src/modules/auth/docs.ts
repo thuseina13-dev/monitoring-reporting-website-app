@@ -17,7 +17,10 @@ export const meDocs = {
       name: t.String(),
       email: t.String(),
       prm: t.Record(t.String(), t.Number()),
-      roles: t.Array(t.String()),
+      roles: t.Array(t.Object({
+        code: t.String(),
+        type: t.String(),
+      })),
       iat: t.Number(),
       exp: t.Number(),
     })),
@@ -46,7 +49,10 @@ export const loginDocs = {
         id: t.String(),
         fullName: t.String(),
         email: t.String(),
-        roles: t.Array(t.String()),
+        roles: t.Array(t.Object({
+          code: t.String(),
+          type: t.String(),
+        })),
         prm: t.Record(t.String(), t.Number()),
       }),
     })),

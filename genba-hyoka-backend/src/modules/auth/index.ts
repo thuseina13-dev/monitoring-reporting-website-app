@@ -34,30 +34,23 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
       // 1. Ambil semua role yang dimiliki user
       const userSelectedRoles = await db
         .select({ 
-          roleType: roles.type 
+          code: roles.code,
+          type: roles.type 
         })
         .from(userRoles)
         .innerJoin(roles, eq(userRoles.roleId, roles.id))
         .where(eq(userRoles.userId, userId));
 
       const prm: Record<string, number> = {};
-      const rolesSet = new Set<string>();
-
-      // Mapping role types ke kode singkat (Issue #27 compatible)
-      const roleMap: Record<string, string> = {
-        'super_admin': 'sup',
-        'admin': 'adm',
-        'manager': 'man',
-        'employee': 'emp'
-      };
+      const userRolesData: { code: string; type: string }[] = [];
 
       userSelectedRoles.forEach((row) => {
-        const type = row.roleType as string;
-        const shortCode = roleMap[type] || type;
-        rolesSet.add(shortCode);
+        const code = row.code as string;
+        const type = row.type as string;
+        userRolesData.push({ code, type });
 
         // 2. Gabungkan permissions dari konstanta statis menggunakan OR
-        const permissions = ROLE_PERMISSIONS[shortCode as RoleCode];
+        const permissions = ROLE_PERMISSIONS[code as RoleCode];
         if (permissions) {
           Object.entries(permissions).forEach(([module, bitmask]) => {
             prm[module] = (prm[module] || 0) | (bitmask as number);
@@ -65,7 +58,7 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
         }
       });
 
-      return { prm, roles: Array.from(rolesSet) };
+      return { prm, roles: userRolesData };
     }
   }))
 
@@ -82,14 +75,14 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
       const isPasswordValid = await Bun.password.verify(password, user.password);
       if (!isPasswordValid) throw new AppError(401, 'Email atau password salah.');
 
-      const { prm, roles: userRoleCodes } = await getAuthData(user.id);
+      const { prm, roles: userRolesData } = await getAuthData(user.id);
 
       const accessToken = await jwtAccess.sign({ 
         sub: user.id, 
         name: user.fullName, 
         email: user.email,
         prm,
-        roles: userRoleCodes 
+        roles: userRolesData 
       });
       const refreshToken = await jwtRefresh.sign({ sub: user.id });
 
@@ -121,7 +114,7 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
           id: user.id, 
           fullName: user.fullName, 
           email: user.email,
-          roles: userRoleCodes,
+          roles: userRolesData,
           prm
         },
       }, 'Login berhasil.');
@@ -173,14 +166,14 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
       const [user] = await db.select().from(users).where(eq(users.id, payload.sub as string)).limit(1);
       if (!user) throw new AppError(404, 'User tidak ditemukan.');
 
-      const { prm, roles: userRoleCodes } = await getAuthData(user.id);
+      const { prm, roles: userRolesData } = await getAuthData(user.id);
       
       const newAccessToken = await jwtAccess.sign({ 
         sub: user.id, 
         name: user.fullName, 
         email: user.email,
         prm,
-        roles: userRoleCodes
+        roles: userRolesData
       });
       const newRefreshToken = await jwtRefresh.sign({ sub: user.id });
 

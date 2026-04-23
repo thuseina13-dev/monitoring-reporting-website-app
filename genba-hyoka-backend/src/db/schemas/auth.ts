@@ -7,6 +7,7 @@ export const roleTypeEnum = pgEnum('role_type', ['super_admin', 'admin', 'manage
 
 export const roles = pgTable('roles', {
   id: uuid('id').primaryKey().defaultRandom(),
+  code: varchar('code', { length: 5 }).unique().notNull(),
   name: varchar('name', { length: 255 }).unique().notNull(),
   type: roleTypeEnum('type'),
   description: varchar('description', { length: 255 }),

@@ -25,7 +25,7 @@ mock.module("../db", () => ({
   db: {
     select: (fields: any) => {
         // Jika sedang mengambil roleType (untuk getAuthData)
-        if (fields && fields.roleType) return createMockChain([{ roleType: 'admin' }]);
+        if (fields && fields.code) return createMockChain([{ code: 'adm', type: 'admin' }]);
         // Default untuk ambil data user
         return createMockChain([mockUser]);
     },
@@ -49,7 +49,7 @@ describe('Auth Module - Issue #33 RBAC Unit Test', () => {
     const selectSpy = spyOn(db, 'select');
     // Implementasi pintar: bedakan query user vs query role
     selectSpy.mockImplementation(((fields: any) => {
-        if (fields && fields.roleType) return createMockChain([{ roleType: 'employee' }]) as any;
+        if (fields && fields.code) return createMockChain([{ code: 'emp', type: 'employee' }]) as any;
         return createMockChain([mockUser]) as any;
     }) as any);
 
@@ -63,7 +63,7 @@ describe('Auth Module - Issue #33 RBAC Unit Test', () => {
     );
     const body = await loginRes.json();
     
-    expect(body.data.user.roles).toContain('emp');
+    expect(body.data.user.roles).toContainEqual({ code: 'emp', type: 'employee' });
     expect(body.data.user.prm.SUB).toBe(15);
     
     selectSpy.mockRestore();
@@ -72,7 +72,7 @@ describe('Auth Module - Issue #33 RBAC Unit Test', () => {
   it('Scenario 2: Role man harus dapat bitmask 1 di modul USR', async () => {
     const selectSpy = spyOn(db, 'select');
     selectSpy.mockImplementation(((fields: any) => {
-        if (fields && fields.roleType) return createMockChain([{ roleType: 'manager' }]) as any;
+        if (fields && fields.code) return createMockChain([{ code: 'man', type: 'manager' }]) as any;
         return createMockChain([mockUser]) as any;
     }) as any);
 
@@ -85,7 +85,7 @@ describe('Auth Module - Issue #33 RBAC Unit Test', () => {
     );
     const body = await loginRes.json();
     
-    expect(body.data.user.roles).toContain('man');
+    expect(body.data.user.roles).toContainEqual({ code: 'man', type: 'manager' });
     expect(body.data.user.prm.USR).toBe(1);
     
     selectSpy.mockRestore();
@@ -94,7 +94,7 @@ describe('Auth Module - Issue #33 RBAC Unit Test', () => {
   it('Scenario 3: Multi-role adm & man harus mendapatkan gabungan bitmask (OR)', async () => {
     const selectSpy = spyOn(db, 'select');
     selectSpy.mockImplementation(((fields: any) => {
-        if (fields && fields.roleType) return createMockChain([{ roleType: 'admin' }, { roleType: 'manager' }]) as any;
+        if (fields && fields.code) return createMockChain([{ code: 'adm', type: 'admin' }, { code: 'man', type: 'manager' }]) as any;
         return createMockChain([mockUser]) as any;
     }) as any);
 
@@ -107,8 +107,8 @@ describe('Auth Module - Issue #33 RBAC Unit Test', () => {
     );
     const body = await loginRes.json();
     
-    expect(body.data.user.roles).toContain('adm');
-    expect(body.data.user.roles).toContain('man');
+    expect(body.data.user.roles).toContainEqual({ code: 'adm', type: 'admin' });
+    expect(body.data.user.roles).toContainEqual({ code: 'man', type: 'manager' });
     expect(body.data.user.prm.USR).toBe(15); // Admin (15) OR Manager (1)
     
     selectSpy.mockRestore();

@@ -1,0 +1,1 @@
+ALTER TABLE "roles" ALTER COLUMN "code" SET DATA TYPE varchar(5);

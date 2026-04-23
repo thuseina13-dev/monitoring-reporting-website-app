@@ -17,18 +17,19 @@ async function validateEnv() {
 async function seedRoles() {
     console.log('--- Sinkronisasi Roles ---');
     const roleList = [
-        { name: 'Super Admin', type: 'super_admin', description: 'Pemegang akses penuh seluruh sistem' },
-        { name: 'Administrator', type: 'admin', description: 'Administrator sistem' },
-        { name: 'Manager', type: 'manager', description: 'Manager Area' },
-        { name: 'Employee', type: 'employee', description: 'Operator Lapangan' },
+        { code: 'sup', name: 'Super Admin', type: 'super_admin', description: 'Pemegang akses penuh seluruh sistem' },
+        { code: 'adm', name: 'Administrator', type: 'admin', description: 'Administrator sistem' },
+        { code: 'man', name: 'Manager', type: 'manager', description: 'Manager Area' },
+        { code: 'emp', name: 'Employee', type: 'employee', description: 'Operator Lapangan' },
     ];
 
     for (const r of roleList) {
         await db.insert(roles)
             .values(r as any)
             .onConflictDoUpdate({
-                target: roles.name,
+                target: roles.code,
                 set: {
+                    name: r.name,
                     type: r.type as any,
                     description: r.description
                 }
