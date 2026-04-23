@@ -59,7 +59,7 @@ export const CustomToast = () => {
             )}
           </YStack>
           
-          <Toast.Action altText="Close" >
+          <Toast.Action altText="Close" asChild>
             <Button 
               size="$2.5" 
               circular 

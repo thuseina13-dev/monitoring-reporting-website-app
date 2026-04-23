@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Redirect, useRouter, useRootNavigationState } from 'expo-router';
+import { useEffect } from 'react';
+import { Redirect, useRootNavigationState } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
-import { storage } from '../utils/storage';
 import { Spinner, YStack } from 'tamagui';
-import axios from 'axios';
 import { useCheckAuth } from '../hooks/auth/useCheckAuth';
 
 export default function Index() {

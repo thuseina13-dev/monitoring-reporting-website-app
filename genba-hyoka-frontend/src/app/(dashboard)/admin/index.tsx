@@ -1,23 +1,17 @@
 import React from 'react';
 import { View, Text, YStack, XStack, ScrollView, Card, Button } from 'tamagui';
-import { useWindowDimensions } from 'react-native';
 import { useAuthStore } from '../../../store/authStore';
 import { MENU_ITEMS, ROLE_BIT } from '../../../config/menu';
 import { useRouter } from 'expo-router';
 
-import { LogOut, Users, Shield, Settings, Activity, BadgeCheck, Building2 } from '@tamagui/lucide-icons';
-import { storage } from '../../../utils/storage';
-import { authService } from '../../../services/api/authService';
+import { Users, Activity, BadgeCheck, Building2, Settings } from '@tamagui/lucide-icons';
 import { COLORS } from '../../../constants/theme';
 import { useLogout } from '@/hooks/auth/useLogout';
+import { MainDashboardMenu } from '../../../components/dashboard/MainDashboardMenu';
 
 export default function AdminDashboard() {
-  const { user, clearAuth } = useAuthStore();
+  const { user } = useAuthStore();
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isMobile = width < 768;
-  const numColumns = isMobile ? 4 : 8;
-  const itemWidth = isMobile ? '23%' : '11%';
   const adminMenus = MENU_ITEMS.filter(item => (item.requiredRoleValue & ROLE_BIT.ADMIN) !== 0);
   const handleActionLogout = useLogout();
   
@@ -35,39 +29,12 @@ export default function AdminDashboard() {
       <YStack padding="$4" gap="$5" minHeight="100%">
         
         {/* Section Menu Utama */}
-        <YStack backgroundColor={COLORS.cardBackground} padding="$4" borderRadius="$5" elevation={2} gap="$3">
-          <Text fontSize="$4" fontWeight="bold" color={COLORS.textDark}>MENU UTAMA</Text>
-          
-          <XStack flexWrap="wrap" rowGap="$4" justifyContent="space-between">
-            {adminMenus.map((item) => (
-              <MenuIcon 
-                key={item.title} 
-                title={item.title} 
-                icon={getIcon(item.title)}
-                onPress={() => router.push(item.href as any)} 
-                itemWidth={itemWidth}
-              />
-            ))}
-            {/* Fill empty spots with grid columns */}
-            {[...Array(numColumns - (adminMenus.length % numColumns || numColumns))].map((_, i) => (
-              <View key={`empty-${i}`} width={itemWidth} />
-            ))}
-          </XStack>
-
-          {/* Logout Footer Button with Text */}
-          <XStack justifyContent="flex-end" marginTop="$2">
-            <Button 
-               size="$3" 
-               backgroundColor="transparent" 
-               icon={<LogOut color={COLORS.warning} size={18} />} 
-               onPress={handleActionLogout}
-               borderWidth={0}
-               pressStyle={{ backgroundColor: '$red2', opacity: 0.7 }}
-            >
-              <Text color={COLORS.warning} fontWeight="800" fontSize="$2">LOGOUT</Text>
-            </Button>
-          </XStack>
-        </YStack>
+        <MainDashboardMenu 
+          items={adminMenus} 
+          getIcon={getIcon} 
+          onLogout={handleActionLogout}
+          onItemPress={(href) => router.push(href as any)}
+        />
 
         {/* Panel Administrator */}
         <YStack gap="$4" marginTop="$2">
@@ -88,7 +55,7 @@ export default function AdminDashboard() {
           <Card padding="$4" backgroundColor={COLORS.cardBackground} elevation={1} borderRadius="$4">
             <XStack justifyContent="space-between" alignItems="center">
               <XStack gap="$3" alignItems="center">
-                <Shield color={COLORS.warning} size={24} />
+                <BadgeCheck color={COLORS.warning} size={24} />
                 <Text fontWeight="600" color={COLORS.textDark}>Audit Log Terakhir</Text>
               </XStack>
               <Button size="$2" unstyled>
@@ -109,38 +76,6 @@ function StatCard({ title, value, icon }: any) {
       <Text fontSize="$8" fontWeight="bold" marginTop="$2" color={COLORS.textDark}>{value}</Text>
       <Text fontSize="$2" color={COLORS.textMuted}>{title}</Text>
     </Card>
-  );
-}
-
-function MenuIcon({ title, icon, onPress, itemWidth }: any) {
-  return (
-    <YStack 
-      onPress={onPress}
-      width={itemWidth}
-      backgroundColor={COLORS.pageBackground} 
-      borderRadius="$3" 
-      alignItems="center" 
-      justifyContent="center" 
-      elevation={1}
-      pressStyle={{ scale: 0.9, backgroundColor: COLORS.inputBackground }}
-      paddingVertical="$3"
-      paddingHorizontal="$1"
-      minHeight={90}
-      gap="$2"
-    >
-      <View>
-          {icon}
-      </View>
-      <Text 
-        fontSize="$1" 
-        textAlign="center" 
-        fontWeight="800" 
-        color={COLORS.textDark} 
-        numberOfLines={2}
-      >
-        {title}
-      </Text>
-    </YStack>
   );
 }
 

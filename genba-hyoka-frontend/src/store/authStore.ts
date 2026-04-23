@@ -22,7 +22,7 @@ export interface AuthState {
 }
 
 const defaultAdminRoles: any = {
-  adm: 'administrator',
+  adm: 'admin',
   man: 'manager',
   emp: 'employee'
 }
@@ -30,7 +30,7 @@ const defaultAdminRoles: any = {
 const mapUserRoles = (userRoles: string[]) => {
   if (!userRoles) return [];
   if (userRoles.includes('sup')) {
-    return ['administrator', 'employee', 'manager'];
+    return ['admin', 'employee', 'manager'];
   }
   const mappedRoles = userRoles.map((role) => {
     if (defaultAdminRoles[role]) {
@@ -59,14 +59,15 @@ export const useAuthStore = create<AuthState>((set): AuthState => ({
         activeRole = user.roles && user.roles.length > 0 ? user.roles[0] : null;
       }
 
-      console.log({ user, accessToken, isAuthenticated: true, activeRole, roles: userRoles })
+      console.log('auth data', { user, accessToken, isAuthenticated: true, activeRole, roles: userRoles })
       set({ user, accessToken, isAuthenticated: true, activeRole, roles: userRoles });
     },
     updateAccessToken: async (accessToken: string , refreshToken: string) => {
       await storage.setItem('refreshToken', refreshToken);
       set({ accessToken });
     },
-    setActiveRole: (role: string) => {
+    setActiveRole: async (role: string) => {
+      await storage.setItem('activeRole', role);
       set({ activeRole: role });
     },
     clearAuth: async () => {

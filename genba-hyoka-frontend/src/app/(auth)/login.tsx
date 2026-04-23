@@ -107,7 +107,7 @@ export default function LoginScreen() {
           {/* Logo Section */}
           <View ai="center" jc="center" h={180} w="100%">
             <RNImage
-              source={typeof LogoTumpuk === 'string' ? { uri: LogoTumpuk } : LogoTumpuk}
+              source={require('../../assets/images/logo-tumpuk-compress-removebg-preview.png')}
               style={{ width: 300, height: 180 }}
               resizeMode="contain"
             />
