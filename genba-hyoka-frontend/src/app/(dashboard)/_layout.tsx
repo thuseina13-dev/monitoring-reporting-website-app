@@ -6,11 +6,15 @@ import { BottomNav } from '../../components/layout/BottomNav';
 import { useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { useCheckAuth } from '@/hooks/auth/useCheckAuth';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 export default function DashboardLayout() {
   const { isAuthenticated, user } = useAuthStore();
   const router = useRouter();
   const { isChecking, checkAuth} = useCheckAuth();
+  
+  // Initialize WebSocket globally for Dashboard
+  useWebSocket();
 
   useEffect(() => {
     const verifySession = async () => {
