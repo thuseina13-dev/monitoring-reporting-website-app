@@ -8,13 +8,15 @@ import { Header } from '@/components/layout/Header';
 import { useCheckAuth } from '@/hooks/auth/useCheckAuth';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
+function WebSocketManager() {
+  useWebSocket();
+  return null;
+}
+
 export default function DashboardLayout() {
   const { isAuthenticated, user } = useAuthStore();
   const router = useRouter();
   const { isChecking, checkAuth} = useCheckAuth();
-  
-  // Initialize WebSocket globally for Dashboard
-  useWebSocket();
 
   useEffect(() => {
     const verifySession = async () => {
@@ -39,6 +41,7 @@ export default function DashboardLayout() {
 
   return (
     <YStack flex={1} backgroundColor="#F8FAFC">
+      <WebSocketManager />
       <Header />
       
       <View flex={1}>
