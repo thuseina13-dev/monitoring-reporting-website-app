@@ -1,5 +1,5 @@
 import { db } from './index';
-import { roles, userRoles, users } from './schema';
+import { roles, userRoles, users, companyProfiles } from './schema';
 import { sql } from 'drizzle-orm';
 
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
@@ -38,7 +38,33 @@ async function seedRoles() {
     console.log('✅ Seeding Roles berhasil!');
 }
 
-async function syncSuperAdmin() {
+async function seedCompany() {
+    console.log('--- Sinkronisasi Company Profile ---');
+    const companyData = {
+        name: 'PT. Maju Bersama',
+        desc: 'Penyedia Jasa Logistik',
+        address: 'Jl. Sudirman No. 10, Jakarta',
+        logo: 'https://storage.link/logo.png',
+        phoneNo: '08123456789',
+        email: 'info@majubersama.com'
+    };
+
+    const [existing] = await db.select().from(companyProfiles).where(sql`name = ${companyData.name}`).limit(1);
+    
+    if (existing) {
+        console.log('ℹ️ Company Profile sudah ada.');
+        return existing.id;
+    }
+
+    const [company] = await db.insert(companyProfiles)
+        .values(companyData)
+        .returning();
+    
+    console.log('✅ Seeding Company Profile berhasil!');
+    return company.id;
+}
+
+async function syncSuperAdmin(companyId: string) {
     console.log('--- SINKRONISASI AKUN MASTER: SUPER ADMIN ---');
 
     try {
@@ -55,13 +81,15 @@ async function syncSuperAdmin() {
                     fullName: 'Sistem Administrator',
                     email: SUPER_ADMIN_EMAIL!,
                     password: hashedPassword,
+                    companyProfileId: companyId,
                     isActive: true
                 })
                 .onConflictDoUpdate({
                     target: users.email,
                     set: { 
                         password: hashedPassword,
-                        fullName: 'Sistem Administrator'
+                        fullName: 'Sistem Administrator',
+                        companyProfileId: companyId
                     }
                 })
                 .returning();
@@ -87,7 +115,8 @@ async function main() {
     try {
         await validateEnv();
         await seedRoles();
-        await syncSuperAdmin();
+        const companyId = await seedCompany();
+        await syncSuperAdmin(companyId);
         console.log('\n--- PROSES SEEDING SELESAI ---');
         process.exit(0);
     } catch (error) {
