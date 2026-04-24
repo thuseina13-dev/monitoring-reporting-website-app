@@ -11,13 +11,18 @@ import { errorSchema } from './utils/schema';
 
 import { cors } from '@elysiajs/cors';
 
-const app = new Elysia()
+import { wsModule } from './modules/ws';
+
+const app = new Elysia({
+  websocket: {
+    idleTimeout: 60, // Sesuai spesifikasi untuk pembersihan memori
+  }
+})
   .use(cors())
   .model({
     ErrorResponse: errorSchema,
   })
   .use(swagger({
-
     path: '/docs',
     documentation: {
       info: {
@@ -38,6 +43,7 @@ const app = new Elysia()
   }))
   .use(errorHandler)
   .use(authModule)
+  .use(wsModule)
   .use(usersModule)
   .use(rolesModule)
   .use(companyProfileModule)
@@ -45,6 +51,20 @@ const app = new Elysia()
     const isConnected = await checkConnection();
     if (isConnected) {
       console.log('✅ GENBA-HYOKA Database: Connected successfully.');
+
+      // Pembersihan tiket kedaluwarsa berkala (Setiap 1 jam)
+      setInterval(async () => {
+        try {
+          const { wsTickets } = await import('./db/schema');
+          const { lt } = await import('drizzle-orm');
+          const { db } = await import('./db');
+          await db.delete(wsTickets).where(lt(wsTickets.expiresAt, new Date()));
+          console.log('🧹 [Cleanup] Tiket WebSocket kedaluwarsa berhasil dibersihkan.');
+        } catch (error) {
+          console.error('❌ [Cleanup] Gagal membersihkan tiket:', error);
+        }
+      }, 3600 * 1000);
+
     } else {
       console.error('❌ GENBA-HYOKA Database: Connection failed. Shuting down...');
       process.exit(1);
