@@ -1,9 +1,20 @@
 import { t } from 'elysia';
 import { errorSchema, successResponse, successListResponse, paginatedResponse, errorResponses } from '../../../utils/schema';
 
-const companyProfileSimple = t.Object({
-  id: t.String(),
+const companyProfileNested = t.Object({
   name: t.String(),
+  desc: t.Union([t.String(), t.Null()]),
+  address: t.Union([t.String(), t.Null()]),
+  logo: t.Union([t.String(), t.Null()]),
+  phoneNo: t.Union([t.String(), t.Null()]),
+  email: t.Union([t.String(), t.Null()]),
+});
+
+const roleNested = t.Object({
+  code: t.String(),
+  name: t.String(),
+  type: t.Union([t.String(), t.Null()]),
+  description: t.Union([t.String(), t.Null()]),
 });
 
 const userResponseSchema = t.Object({
@@ -15,18 +26,15 @@ const userResponseSchema = t.Object({
   gender: t.Union([t.String(), t.Null()]),
   isActive: t.Boolean(),
   companyProfileId: t.Union([t.String(), t.Null()]),
-  companyProfile: t.Optional(t.Union([companyProfileSimple, t.Null()])),
-  roles: t.Array(t.Object({
-    id: t.String(),
-    name: t.String(),
-  })),
+  companyProfile: t.Optional(t.Union([companyProfileNested, t.Null()])),
+  roles: t.Optional(t.Array(roleNested)),
 });
 
 // ── GET /users ──────────────────────────────────────────────
 export const listUsersDocs = {
   detail: {
     summary: 'Daftar Semua Pengguna',
-    description: 'Mengambil daftar pengguna dengan paginasi, data role, dan profil perusahaan. Membutuhkan izin USR (Read).',
+    description: 'Mengambil daftar pengguna dengan paginasi. Gunakan query "include" untuk memuat relasi (roles, company). Membutuhkan izin USR (Read).',
     tags: ['Users'],
     security: [{ bearerAuth: [] }],
   },
@@ -38,12 +46,15 @@ export const listUsersDocs = {
     page: t.Optional(t.Numeric({ minimum: 1, default: 1 })),
     limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100, default: 10 })),
     search: t.Optional(t.String({ description: 'Cari nama/email (Case-insensitive)' })),
+    fullName: t.Optional(t.String({ description: 'Filter berdasarkan nama lengkap' })),
+    email: t.Optional(t.String({ description: 'Filter berdasarkan email' })),
     isActive: t.Optional(t.String({ description: 'Filter status true/false' })),
     phoneNo: t.Optional(t.String({ description: 'Filter nomor telepon' })),
     gender: t.Optional(t.String({ description: 'Filter gender (male/female)' })),
     address: t.Optional(t.String({ description: 'Filter alamat (Partial match)' })),
     companyProfileId: t.Optional(t.String({ format: 'uuid' })),
-    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor. Data diurutkan via ID ASC.' })),
+    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor.' })),
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (comma separated). Contoh: roles,company' })),
   }),
 };
 
@@ -51,10 +62,13 @@ export const listUsersDocs = {
 export const getUserDocs = {
   detail: {
     summary: 'Detail Pengguna',
-    description: 'Mengambil detail pengguna termasuk daftar role dan profil perusahaan.',
+    description: 'Mengambil detail pengguna. Gunakan query "include" (roles, company) untuk memuat data relasi.',
     tags: ['Users'],
     security: [{ bearerAuth: [] }],
   },
+  query: t.Object({
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (comma separated). Contoh: roles,company' })),
+  }),
   response: {
     200: successResponse(userResponseSchema),
     ...errorResponses([401, 403, 404, 500]),

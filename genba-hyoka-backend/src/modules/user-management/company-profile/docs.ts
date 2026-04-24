@@ -1,10 +1,13 @@
 import { t } from 'elysia';
 import { errorResponses, paginatedResponse, successResponse } from '../../../utils/schema';
 
-const userSimple = t.Object({
-  id: t.String(),
+const userNested = t.Object({
   fullName: t.String(),
   email: t.String(),
+  phoneNo: t.Union([t.String(), t.Null()]),
+  address: t.Union([t.String(), t.Null()]),
+  gender: t.Union([t.String(), t.Null()]),
+  isActive: t.Boolean(),
 });
 
 const companyProfileResponseObj = t.Object({
@@ -15,13 +18,13 @@ const companyProfileResponseObj = t.Object({
   logo: t.Union([t.String(), t.Null()]),
   phoneNo: t.Union([t.String(), t.Null()]),
   email: t.Union([t.String(), t.Null()]),
-  users: t.Optional(t.Array(userSimple)),
+  users: t.Optional(t.Array(userNested)),
 });
 
 export const listCompanyProfilesDocs = {
   detail: {
     summary: 'Daftar Company Profile',
-    description: 'Get list of company profiles with pagination and filtering. Includes associated users.',
+    description: 'Get list of company profiles. Use query "include=users" to load associated users with full details (except ID).',
     tags: ['Company Profiles'],
     security: [{ bearerAuth: [] }],
   },
@@ -37,17 +40,21 @@ export const listCompanyProfilesDocs = {
     email: t.Optional(t.String()),
     phoneNo: t.Optional(t.String()),
     address: t.Optional(t.String()),
-    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor. Data diurutkan via ID ASC.' })),
+    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor.' })),
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
   }),
 };
 
 export const getCompanyProfileDocs = {
   detail: {
     summary: 'Detail Company Profile',
-    description: 'Get company profile by ID including associated users.',
+    description: 'Get company profile by ID. Use query "include=users" to load associated users with full details (except ID).',
     tags: ['Company Profiles'],
     security: [{ bearerAuth: [] }],
   },
+  query: t.Object({
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
+  }),
   response: {
     200: successResponse(companyProfileResponseObj),
     ...errorResponses([401, 403, 404, 500]),

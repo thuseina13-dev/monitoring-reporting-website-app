@@ -50,10 +50,15 @@ async function getTestToken(): Promise<string> {
 // ── Mock Database ───────────────────────────────────────────
 mock.module("../db", () => ({
   db: {
+    query: {
+      users: {
+        findMany: async () => mockUsers,
+        findFirst: async () => mockUsers[0],
+      }
+    },
     select: (fields: any) => {
         if (fields && fields.count) return createMockChain([{ count: 1 }]);
         if (fields && fields.roleId) return createMockChain([{ userId: 'user-uuid-1', roleId: 'role-1', roleName: 'Admin' }]);
-        // Default return empty for POST uniqueness checks
         return createMockChain([]); 
     },
 

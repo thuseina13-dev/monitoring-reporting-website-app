@@ -57,7 +57,6 @@ Cocok untuk *Infinite Scroll*. Memberikan performa lebih stabil untuk data besar
 
 ---
 
-
 ### 2. Pencarian Global (Global Search)
 Gunakan parameter `search` untuk melakukan pencarian di beberapa kolom sekaligus (seperti Name dan Email).
   - **Contoh:** `GET /v1/users?search=alex`
@@ -71,27 +70,59 @@ Anda dapat memfilter data berdasarkan kolom tertentu yang terdaftar dalam *white
 
 **Penting:** Sistem secara otomatis mendeteksi tipe data kolom di database untuk menentukan apakah harus menggunakan pencarian fleksibel (`LIKE`) atau tepat (`EQUALS`).
 
-**Integrasi:** Anda dapat menggabungkan `search` dengan filter spesifik. Contoh: `GET /v1/users?search=alex&isActive=true` akan mencari user dengan nama/email mengandung "alex" DAN statusnya aktif.
-
-### 4. Advanced Nested Filtering (Level 3)
-Sistem mendukung logika bertingkat (**Nested AND/OR**) tanpa batas menggunakan format objek kueri.
-
-**Skenario:** Cari user yang [(**Aktif** DAN **Laki-Laki**) OR (**Tidak Aktif** DAN **Perempuan**)]
-- **URL:** 
-  `?or[0][and][isActive]=true&or[0][and][gender]=male&or[1][and][isActive]=false&or[1][and][gender]=female`
-
-**Skenario:** Cari user yang **Aktif** DAN (**Nama mengandung 'alex'** OR **Email mengandung 'admin'**)
-- **URL:** 
-  `?isActive=true&or[fullName]=alex&or[email]=admin`
-
-**Kombinasi:**
-Anda bisa menggabungkan semua filter di atas secara rekursif sesuai kebutuhan logika bisnis frontend.
-
-### 5. Catatan Tambahan (Notes)
-- **Case-Insensitive**: Semua pencarian teks (`search`, `address`, `fullName`, dll) bersifat tidak peka huruf besar/kecil.
-- **Default Sorting**: Secara default, data diurutkan berdasarkan `ID` secara `ASC` (A-Z/Kecil ke Besar) untuk menjamin stabilitas paginasi cursor.
+### 4. Optional Relation Loading (Include)
+Frontend memiliki kendali penuh untuk memuat data relasi tambahan secara opsional guna mengoptimalkan performa.
+- **Params:** `include` (comma separated).
+- **Contoh:** `GET /v1/users?include=roles,company`
+- **Tingkat Kedalaman**: Relasi akan dimuat secara *nested* dalam satu response JSON.
+- **Efisiensi**: Jika `include` tidak dikirim, backend tidak akan melakukan query ke tabel relasi (Lazy Load).
 
 ---
 
+## 🛠️ Backend Development: Drizzle RQB
 
+Backend menggunakan **Drizzle Relational Query Builder (RQB)** untuk pengelolaan data yang lebih deklaratif dan bersih.
 
+### 1. Mendefinisikan Relasi
+Pastikan relasi sudah didefinisikan di file `schema.ts`:
+```typescript
+export const usersRelations = relations(users, ({ one, many }) => ({
+  companyProfile: one(companyProfiles, { fields: [users.companyProfileId], references: [companyProfiles.id] }),
+  userRoles: many(userRoles),
+}));
+```
+
+### 2. Helper `buildRQBWhere`
+Gunakan helper `buildRQBWhere` untuk menangani filtering otomatis di dalam query RQB.
+
+```typescript
+import { buildRQBWhere } from '../../../utils/filter';
+
+// Di dalam handler GET
+const filterOptions = {
+  searchFields: ['fullName', 'email'], // Kolom untuk parameter ?search
+  exactFields: ['isActive', 'companyProfileId'], // Kolom untuk filter EQUALS (ID/Boolean)
+  excludeFields: ['password'], // Kolom yang tidak boleh difilter
+  customConditions: [isNull(users.deletedAt)] // Kondisi tambahan tetap (opsional)
+};
+
+const list = await db.query.users.findMany({
+  where: (fields, ops) => buildRQBWhere(fields, ops, query, filterOptions),
+  with: {
+    // Definisi relasi yang di-include
+    ...(includeCompany && { companyProfile: { columns: { id: false, name: true } } }),
+  }
+});
+```
+
+### 3. Keunggulan RQB
+- **Auto-Nesting**: Tidak perlu melakukan mapping manual `.map()` untuk data relasi.
+- **Column Filtering**: Bisa melakukan *exclude* kolom (misal: `id: false` pada relasi) secara deklaratif.
+- **Safe Pagination**: Terintegrasi otomatis dengan logic cursor pagination melalui parameter `cursor`.
+
+---
+
+## 5. Catatan Tambahan (Notes)
+- **Case-Insensitive**: Semua pencarian teks (`search`, `address`, `fullName`, dll) bersifat tidak peka huruf besar/kecil.
+- **Default Sorting**: Secara default, data diurutkan berdasarkan `ID` secara `ASC` untuk stabilitas paginasi cursor.
+- **Audit Logs**: Setiap operasi Write (POST/PUT/DELETE) wajib menyertakan `createAuditLog` di dalam transaksi database.

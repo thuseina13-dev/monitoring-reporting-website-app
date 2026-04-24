@@ -2,8 +2,9 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db';
 import { roles, userRoles, users } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, gt, asc, inArray } from 'drizzle-orm';
-import { buildFilters } from '../../../utils/filter';
+import { eq, and, count, gt, asc, inArray, or, ilike } from 'drizzle-orm';
+
+import { buildRQBWhere } from '../../../utils/filter';
 
 import { AppError } from '../../../utils/AppError';
 import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
@@ -22,7 +23,7 @@ import {
 export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   .use(jwtGuard)
 
-  // ── GET /roles (List with Users) ────────────────────────────
+  // ── GET /roles (Smart RQB) ──────────────────────────────────
   .get(
     '/',
     async ({ query }) => {
@@ -30,73 +31,75 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
         throw new AppError(400, 'Paginasi page dan cursor tidak dapat digunakan secara bersamaan.');
       }
 
+      const includes = query.include ? query.include.split(',') : [];
+      const includeUsers = includes.includes('users');
+
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
       const offset = query.cursor ? undefined : (page - 1) * limit;
 
-      const filters = buildFilters(roles, query, [
-        'code',
-        'name',
-        'type'
-      ]);
+      // ── Filter Options ────────────────────────────────────
+      const filterOptions = {
+        searchFields: ['name', 'code'],
+        exactFields: ['type', 'code']
+      };
 
-      if (query.cursor) {
-        filters.push(gt(roles.id, query.cursor));
-      }
+      const roleList = await db.query.roles.findMany({
+        where: (fields, ops) => buildRQBWhere(fields, ops, query, filterOptions),
+        orderBy: [asc(roles.id)],
+        limit: limit,
+        offset: offset,
+        with: {
+          ...(includeUsers && {
+            userRoles: {
+              with: {
+                user: {
+                  columns: {
+                    id: false,
+                    fullName: true,
+                    email: true,
+                    phoneNo: true,
+                    address: true,
+                    gender: true,
+                    isActive: true,
+                  }
+                }
+              }
+            }
+          })
+        }
+      });
 
-      const whereClause = filters.length > 0 ? and(...filters) : undefined;
-
-      const roleList = await db
-        .select()
-        .from(roles)
-        .where(whereClause)
-        .orderBy(asc(roles.id))
-        .limit(limit)
-        .offset(offset as any);
+      const finalData = roleList.map(role => {
+        const { userRoles, ...roleData } = role as any;
+        return {
+          ...roleData,
+          ...(includeUsers && {
+            users: userRoles.map((ur: any) => ur.user)
+          })
+        };
+      });
 
       const [totalCount] = await db
         .select({ count: count() })
         .from(roles)
-        .where(whereClause);
-
-      if (roleList.length === 0) {
-        return sendSuccessPagination([], { total: 0, current_page: page, last_page: 0, limit });
-      }
-
-      // Fetch users for these roles
-      const roleIds = roleList.map(r => r.id);
-      const rolesWithUsers = await db
-        .select({
-          roleId: userRoles.roleId,
-          userId: users.id,
-          fullName: users.fullName,
-          email: users.email
-        })
-        .from(userRoles)
-        .innerJoin(users, eq(userRoles.userId, users.id))
-        .where(inArray(userRoles.roleId, roleIds));
-
-      const dataWithUsers = roleList.map(role => ({
-        ...role,
-        users: rolesWithUsers
-          .filter(ru => ru.roleId === role.id)
-          .map(ru => ({ id: ru.userId, fullName: ru.fullName, email: ru.email }))
-      }));
+        .where(buildRQBWhere(roles, { and, or, eq, ilike, gt }, query, filterOptions));
 
       const total = Number(totalCount.count);
-      const meta: any = { limit };
+      const meta: any = { 
+        limit,
+        ...(query.cursor ? { 
+          next_cursor: roleList.length === limit ? roleList[roleList.length - 1].id : null,
+          has_more: roleList.length === limit
+        } : {
+          total,
+          current_page: page,
+          last_page: Math.ceil(total / limit),
+          has_more: page < Math.ceil(total / limit)
+        })
+      };
 
-      if (query.cursor) {
-        meta.next_cursor = roleList.length === limit ? roleList[roleList.length - 1].id : null;
-        meta.has_more = !!meta.next_cursor;
-      } else {
-        meta.total = total;
-        meta.current_page = page;
-        meta.last_page = Math.ceil(total / limit);
-        meta.has_more = page < meta.last_page;
-      }
-
-      return sendSuccessPagination(dataWithUsers, meta, 'Data berhasil diambil');
+      return sendSuccessPagination(finalData, meta, 'Data berhasil diambil');
     },
     {
       ...listRolesDocs,
@@ -104,24 +107,47 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
     }
   )
 
-  // ── GET /roles/:id (Detail with Users) ──────────────────────
+  // ── GET /roles/:id (Pure RQB) ──────────────────────────────
   .get(
     '/:id',
-    async ({ params }) => {
-      const [role] = await db.select().from(roles).where(eq(roles.id, params.id)).limit(1);
+    async ({ params, query }) => {
+      const includes = query.include ? query.include.split(',') : [];
+      const includeUsers = includes.includes('users');
+
+      const role = await db.query.roles.findFirst({
+        where: (r, { eq }) => eq(r.id, params.id),
+        with: {
+          ...(includeUsers && {
+            userRoles: {
+              with: {
+                user: {
+                  columns: {
+                    id: false,
+                    fullName: true,
+                    email: true,
+                    phoneNo: true,
+                    address: true,
+                    gender: true,
+                    isActive: true,
+                  }
+                }
+              }
+            }
+          })
+        }
+      });
+
       if (!role) throw new AppError(404, 'Role tidak ditemukan');
 
-      const roleUsers = await db
-        .select({
-          id: users.id,
-          fullName: users.fullName,
-          email: users.email
+      const { userRoles, ...roleData } = role as any;
+      const finalData = {
+        ...roleData,
+        ...(includeUsers && {
+          users: userRoles.map((ur: any) => ur.user)
         })
-        .from(userRoles)
-        .innerJoin(users, eq(userRoles.userId, users.id))
-        .where(eq(userRoles.roleId, params.id));
+      };
 
-      return sendSuccess({ ...role, users: roleUsers }, 'Data berhasil diambil');
+      return sendSuccess(finalData, 'Data berhasil diambil');
     },
     {
       ...getRoleDocs,

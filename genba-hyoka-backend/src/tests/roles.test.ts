@@ -1,9 +1,8 @@
-import { describe, expect, it, mock, spyOn } from "bun:test";
 import { Elysia } from 'elysia';
 
-// ── Mock Database Robust Chain ───────────────────────────────
+// ── Mock Database Robust Helper ──────────────────────────────
 const mockRoles = [
-  { id: 'role-1', code: 'adm', name: 'Admin', description: 'Administrator', createdAt: new Date(), deletedAt: null, users: [] },
+  { id: 'role-1', code: 'ADM', name: 'Admin', type: 'admin', description: 'Administrator' },
 ];
 
 const createMockChain = (value: any) => {
@@ -11,20 +10,12 @@ const createMockChain = (value: any) => {
     from: () => chain,
     limit: () => chain,
     offset: () => chain,
-    where: () => chain,
     orderBy: () => chain,
-    asc: () => chain,
-    desc: () => chain,
+    where: () => chain,
     innerJoin: () => chain,
-    leftJoin: () => chain,
     values: () => chain,
     returning: () => chain,
-    set: () => chain,
     then: (resolve: any) => Promise.resolve(value).then(resolve),
-    [Symbol.asyncIterator]: async function* () {
-        if (Array.isArray(value)) yield* value;
-        else yield value;
-    }
   };
   return chain;
 };
@@ -38,7 +29,7 @@ async function getTestToken(): Promise<string> {
   await app
     .get('/token', async ({ jwt }) => {
       token = await jwt.sign({
-        sub: 'admin-uuid-1',
+        sub: 'admin-1',
         email: 'admin@genba.com',
         prm: { ROL: 15 },
       });
@@ -51,37 +42,40 @@ async function getTestToken(): Promise<string> {
 // ── Mock Database ───────────────────────────────────────────
 mock.module("../db", () => ({
   db: {
-    select: (fields: any) => {
-        if (fields && fields.count) return createMockChain([{ count: 0 }]); // Default 0 usage
-        // Default return empty for uniqueness checks
-        return createMockChain([]);
+    query: {
+      roles: {
+        findMany: async () => mockRoles,
+        findFirst: async () => mockRoles[0],
+      }
     },
-
-    transaction: async (fn: Function) => fn({
-        insert: () => createMockChain([mockRoles[0]]),
-        select: (fields: any) => {
-            return createMockChain([{ id: 'role-1', code: 'adm', name: 'Admin', type: 'admin' }]);
-        },
-        delete: () => createMockChain([]),
-        update: () => createMockChain([mockRoles[0]]),
-    }),
+    select: (fields: any) => {
+      if (fields && fields.count) return createMockChain([{ count: 1 }]);
+      return createMockChain([]);
+    },
     insert: () => createMockChain([mockRoles[0]]),
     update: () => createMockChain([mockRoles[0]]),
     delete: () => createMockChain([]),
+    transaction: async (fn: Function) => fn({
+      insert: () => createMockChain([mockRoles[0]]),
+      update: () => createMockChain([mockRoles[0]]),
+      delete: () => createMockChain([]),
+      select: () => createMockChain([{ id: 'role-1', type: 'admin' }]),
+    }),
   },
   checkConnection: () => Promise.resolve(true)
 }));
 
-// ── Import Modules ────────────────────────────────────────────
+import { describe, expect, it, mock } from "bun:test";
+
+// ── Import Modules ───────────────────────────────────────────
 import { rolesModule } from '../modules/user-management/roles';
 import { errorHandler } from '../middlewares/errorHandler';
-import { db } from '../db';
 
 const app = new Elysia().use(errorHandler).use(rolesModule);
 
 // ── Tests ────────────────────────────────────────────────────
 describe('Roles Module - Unit Test /v1/roles', () => {
-  it('GET /v1/roles > Harus mengembalikan daftar role (200)', async () => {
+  it('Harus mengembalikan daftar role (200)', async () => {
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/roles', {
@@ -91,18 +85,19 @@ describe('Roles Module - Unit Test /v1/roles', () => {
     );
     const body = await response.json();
     expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
   });
 
-  it('POST /v1/roles > Harus berhasil buat role baru (201)', async () => {
+  it('Harus berhasil buat role baru (201)', async () => {
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/roles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ 
-            code: 'NEW',
-            name: 'New Role UNIQUE', 
-            description: 'Test description'
+          code: 'TST', 
+          name: 'Test Role', 
+          type: 'employee' 
         }),
       })
     );
@@ -112,28 +107,27 @@ describe('Roles Module - Unit Test /v1/roles', () => {
   });
 
   it('PUT /v1/roles/:id > Harus blokir perubahan jika role tipe super_admin (403)', async () => {
-    const selectSpy = spyOn(db, 'select');
-    selectSpy.mockImplementation((() => createMockChain([{ id: 'role-super', name: 'Super Admin', type: 'super_admin' }])) as any);
+    mock.module("../db", () => ({
+      db: {
+        select: () => createMockChain([{ id: 'role-super', type: 'super_admin' }]),
+      },
+      checkConnection: () => Promise.resolve(true)
+    }));
 
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/roles/role-super', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: 'Role Baru' }),
+        body: JSON.stringify({ name: 'Super Admin Updated' }),
       })
     );
     const body = await response.json();
     expect(response.status).toBe(403);
     expect(body.message).toBe('Peran Sistem Induk bersifat Read-Only');
-    selectSpy.mockRestore();
   });
 
   it('DELETE /v1/roles/:id > Harus blokir penghapusan jika role tipe super_admin (403)', async () => {
-    const selectSpy = spyOn(db, 'select');
-    // Mock existence check outside transaction
-    selectSpy.mockImplementation((() => createMockChain([{ id: 'role-super', name: 'Super Admin', type: 'super_admin' }])) as any);
-
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/roles/role-super', {
@@ -144,6 +138,5 @@ describe('Roles Module - Unit Test /v1/roles', () => {
     const body = await response.json();
     expect(response.status).toBe(403);
     expect(body.message).toBe('Peran Sistem Induk bersifat Read-Only');
-    selectSpy.mockRestore();
   });
 });

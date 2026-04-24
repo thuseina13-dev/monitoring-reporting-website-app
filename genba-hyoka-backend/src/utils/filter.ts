@@ -1,12 +1,7 @@
 import { SQL, eq, ilike, or, and, getTableColumns } from 'drizzle-orm';
 
 /**
- * Membangun filter Drizzle secara rekursif untuk mendukung kondisi kompleks (AND/OR bersarang).
- * 
- * @param table Objek tabel Drizzle
- * @param query Objek query yang berisi kriteria filter
- * @param allowedFilters Daftar kolom yang aman untuk difilter
- * @returns SQL expression atau undefined
+ * [LEGACY] Membangun filter Drizzle Core (db.select)
  */
 export const buildFilters = (
   table: any,
@@ -15,40 +10,32 @@ export const buildFilters = (
 ): SQL[] => {
   const columns = getTableColumns(table);
 
-  /**
-   * Fungsi internal untuk memproses satu unit filter secara rekursif
-   */
   const processFilter = (data: any, defaultOperator: 'and' | 'or' = 'and'): SQL | undefined => {
     if (!data || typeof data !== 'object') return undefined;
 
     const conditions: SQL[] = [];
 
-    // Jika data adalah Array (biasanya di dalam grup or: [{}, {}])
     if (Array.isArray(data)) {
       data.forEach(item => {
         const result = processFilter(item);
         if (result) conditions.push(result);
       });
     } else {
-      // Proses setiap key dalam objek
       for (const key in data) {
         const value = data[key];
 
-        // 1. Handle Grup AND Rekursif
         if (key === 'and') {
           const res = processFilter(value, 'and');
           if (res) conditions.push(res);
           continue;
         }
 
-        // 2. Handle Grup OR Rekursif
         if (key === 'or') {
           const res = processFilter(value, 'or');
           if (res) conditions.push(res);
           continue;
         }
 
-        // 3. Handle Global Search (Legacy Support)
         if (key === 'search' && typeof value === 'string') {
           const searchConditions: SQL[] = [];
           allowedFilters.forEach(colKey => {
@@ -61,7 +48,6 @@ export const buildFilters = (
           continue;
         }
 
-        // 4. Handle Kolom Tunggal (Cek Whitelist)
         if (allowedFilters.includes(key)) {
           const column = columns[key];
           if (!column) continue;
@@ -83,7 +69,60 @@ export const buildFilters = (
     return defaultOperator === 'or' ? or(...conditions) : and(...conditions);
   };
 
-  // Mulai proses dari root query
   const finalResult = processFilter(query);
   return finalResult ? [finalResult] : [];
+};
+
+/**
+ * [NEW] Membangun filter untuk Drizzle Relational Query Builder (RQB)
+ * Sangat dinamis dan mendukung mapping otomatis berdasarkan schema.
+ */
+export const buildRQBWhere = (
+  fields: any,
+  ops: any,
+  query: Record<string, any>,
+  options: {
+    searchFields?: string[];
+    exactFields?: string[];
+    excludeFields?: string[];
+    customConditions?: any[];
+  } = {}
+) => {
+  const { and, or, eq, ilike, gt } = ops;
+  const conditions: any[] = options.customConditions || [];
+
+  // 1. Global Search
+  if (query.search && options.searchFields) {
+    const searchConditions = options.searchFields
+      .filter(key => fields[key])
+      .map(key => ilike(fields[key], `%${query.search}%`));
+    if (searchConditions.length > 0) conditions.push(or(...searchConditions));
+  }
+
+  // 2. Auto-mapping berdasarkan Query Params
+  for (const key in query) {
+    // Lewati parameter internal paginasi/include
+    if (['page', 'limit', 'cursor', 'include', 'search'].includes(key)) continue;
+    if (options.excludeFields?.includes(key)) continue;
+
+    const value = query[key];
+    const column = fields[key];
+    
+    if (!column || value === undefined || value === '') continue;
+
+    // Tentukan Operator
+    if (options.exactFields?.includes(key) || typeof value === 'boolean') {
+      const finalVal = (value === 'true') ? true : (value === 'false') ? false : value;
+      conditions.push(eq(column, finalVal));
+    } else {
+      conditions.push(ilike(column, `%${value}%`));
+    }
+  }
+
+  // 3. Pagination Cursor
+  if (query.cursor && fields.id) {
+    conditions.push(gt(fields.id, query.cursor));
+  }
+
+  return conditions.length > 0 ? and(...conditions) : undefined;
 };

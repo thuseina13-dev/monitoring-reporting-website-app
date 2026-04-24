@@ -2,8 +2,10 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db';
 import { companyProfiles, users } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, gt, asc, isNull, inArray } from 'drizzle-orm';
-import { buildFilters } from '../../../utils/filter';
+import { eq, and, count, gt, asc, isNull, inArray, or, ilike } from 'drizzle-orm';
+
+import { buildRQBWhere } from '../../../utils/filter';
+
 import { AppError } from '../../../utils/AppError';
 import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
 import { jwtGuard } from '../../../middlewares/jwtGuard';
@@ -21,7 +23,7 @@ import {
 export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' })
   .use(jwtGuard)
 
-  // ── GET /company-profiles ────────────────────────────
+  // ── GET /company-profiles (Smart RQB) ──────────────────────
   .get(
     '/',
     async ({ query }) => {
@@ -29,75 +31,61 @@ export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' 
         throw new AppError(400, 'Paginasi page dan cursor tidak dapat digunakan secara bersamaan.');
       }
 
+      const includes = query.include ? query.include.split(',') : [];
+      const includeUsers = includes.includes('users');
+
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
       const offset = query.cursor ? undefined : (page - 1) * limit;
 
-      const filters = buildFilters(companyProfiles, query, [
-        'name',
-        'email',
-        'phoneNo',
-        'address'
-      ]);
+      // ── Filter Options ────────────────────────────────────
+      const filterOptions = {
+        searchFields: ['name', 'email', 'phoneNo', 'address'],
+        customConditions: [isNull(companyProfiles.deletedAt)]
+      };
 
-      filters.push(isNull(companyProfiles.deletedAt));
-
-      if (query.cursor) {
-        filters.push(gt(companyProfiles.id, query.cursor));
-      }
-
-      const whereClause = filters.length > 0 ? and(...filters) : undefined;
-
-      const profileList = await db
-        .select()
-        .from(companyProfiles)
-        .where(whereClause)
-        .orderBy(asc(companyProfiles.id))
-        .limit(limit)
-        .offset(offset as any);
+      const profileList = await db.query.companyProfiles.findMany({
+        where: (fields, ops) => buildRQBWhere(fields, ops, query, filterOptions),
+        orderBy: [asc(companyProfiles.id)],
+        limit: limit,
+        offset: offset,
+        with: {
+          ...(includeUsers && {
+            users: {
+              columns: {
+                id: false,
+                fullName: true,
+                email: true,
+                phoneNo: true,
+                address: true,
+                gender: true,
+                isActive: true,
+              }
+            }
+          })
+        }
+      });
 
       const [totalCount] = await db
         .select({ count: count() })
         .from(companyProfiles)
-        .where(whereClause);
-
-      if (profileList.length === 0) {
-        return sendSuccessPagination([], { total: 0, current_page: page, last_page: 0, limit });
-      }
-
-      // Fetch users for these companies
-      const companyIds = profileList.map(p => p.id);
-      const allUsers = await db
-        .select({
-          id: users.id,
-          fullName: users.fullName,
-          email: users.email,
-          companyProfileId: users.companyProfileId,
-        })
-        .from(users)
-        .where(inArray(users.companyProfileId, companyIds));
-
-      const dataWithUsers = profileList.map(profile => ({
-        ...profile,
-        users: allUsers.filter(u => u.companyProfileId === profile.id)
-      }));
+        .where(buildRQBWhere(companyProfiles, { and, or, eq, ilike, gt }, query, filterOptions));
 
       const total = Number(totalCount.count);
-      const nextCursor = profileList.length === limit ? profileList[profileList.length - 1].id : null;
+      const meta: any = { 
+        limit,
+        ...(query.cursor ? { 
+          next_cursor: profileList.length === limit ? profileList[profileList.length - 1].id : null,
+          has_more: profileList.length === limit
+        } : {
+          total,
+          current_page: page,
+          last_page: Math.ceil(total / limit),
+          has_more: page < Math.ceil(total / limit)
+        })
+      };
 
-      const meta: any = { limit };
-
-      if (query.cursor) {
-        meta.next_cursor = nextCursor;
-        meta.has_more = !!nextCursor;
-      } else {
-        meta.total = total;
-        meta.current_page = page;
-        meta.last_page = Math.ceil(total / limit);
-        meta.has_more = page < meta.last_page;
-      }
-
-      return sendSuccessPagination(dataWithUsers, meta, 'Data berhasil diambil');
+      return sendSuccessPagination(profileList, meta, 'Data berhasil diambil');
     },
     {
       ...listCompanyProfilesDocs,
@@ -105,23 +93,35 @@ export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' 
     }
   )
 
-  // ── GET /company-profiles/:id ──────────────────────
+  // ── GET /company-profiles/:id (Pure RQB) ──────────────────
   .get(
     '/:id',
-    async ({ params }) => {
-      const [profile] = await db.select().from(companyProfiles).where(and(eq(companyProfiles.id, params.id), isNull(companyProfiles.deletedAt))).limit(1);
+    async ({ params, query }) => {
+      const includes = query.include ? query.include.split(',') : [];
+      const includeUsers = includes.includes('users');
+
+      const profile = await db.query.companyProfiles.findFirst({
+        where: (cp, { eq, and, isNull }) => and(eq(cp.id, params.id), isNull(cp.deletedAt)),
+        with: {
+          ...(includeUsers && {
+            users: {
+              columns: {
+                id: false,
+                fullName: true,
+                email: true,
+                phoneNo: true,
+                address: true,
+                gender: true,
+                isActive: true,
+              }
+            }
+          })
+        }
+      });
+
       if (!profile) throw new AppError(404, 'Profil perusahaan tidak ditemukan');
 
-      const companyUsers = await db
-        .select({
-          id: users.id,
-          fullName: users.fullName,
-          email: users.email,
-        })
-        .from(users)
-        .where(eq(users.companyProfileId, params.id));
-
-      return sendSuccess({ ...profile, users: companyUsers }, 'Data berhasil diambil');
+      return sendSuccess(profile, 'Data berhasil diambil');
     },
     {
       ...getCompanyProfileDocs,
