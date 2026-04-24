@@ -1,8 +1,8 @@
 import { Elysia } from 'elysia';
 import { db } from '../../../db';
-import { companyProfiles } from '../../../db/schema';
+import { companyProfiles, users } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, gt, asc, isNull } from 'drizzle-orm';
+import { eq, and, count, gt, asc, isNull, inArray } from 'drizzle-orm';
 import { buildFilters } from '../../../utils/filter';
 import { AppError } from '../../../utils/AppError';
 import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
@@ -65,6 +65,23 @@ export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' 
         return sendSuccessPagination([], { total: 0, current_page: page, last_page: 0, limit });
       }
 
+      // Fetch users for these companies
+      const companyIds = profileList.map(p => p.id);
+      const allUsers = await db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          email: users.email,
+          companyProfileId: users.companyProfileId,
+        })
+        .from(users)
+        .where(inArray(users.companyProfileId, companyIds));
+
+      const dataWithUsers = profileList.map(profile => ({
+        ...profile,
+        users: allUsers.filter(u => u.companyProfileId === profile.id)
+      }));
+
       const total = Number(totalCount.count);
       const nextCursor = profileList.length === limit ? profileList[profileList.length - 1].id : null;
 
@@ -80,7 +97,7 @@ export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' 
         meta.has_more = page < meta.last_page;
       }
 
-      return sendSuccessPagination(profileList, meta, 'Data berhasil diambil');
+      return sendSuccessPagination(dataWithUsers, meta, 'Data berhasil diambil');
     },
     {
       ...listCompanyProfilesDocs,
@@ -95,7 +112,16 @@ export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' 
       const [profile] = await db.select().from(companyProfiles).where(and(eq(companyProfiles.id, params.id), isNull(companyProfiles.deletedAt))).limit(1);
       if (!profile) throw new AppError(404, 'Profil perusahaan tidak ditemukan');
 
-      return sendSuccess(profile, 'Data berhasil diambil');
+      const companyUsers = await db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.companyProfileId, params.id));
+
+      return sendSuccess({ ...profile, users: companyUsers }, 'Data berhasil diambil');
     },
     {
       ...getCompanyProfileDocs,

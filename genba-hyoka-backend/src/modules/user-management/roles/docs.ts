@@ -1,19 +1,26 @@
 import { t } from 'elysia';
 import { errorResponses, paginatedResponse, successResponse } from '../../../utils/schema';
 
+const userSimple = t.Object({
+  id: t.String(),
+  fullName: t.String(),
+  email: t.String(),
+});
+
 const roleResponseObj = t.Object({
   id: t.String(),
   code: t.String(),
   name: t.String(),
   type: t.Optional(t.Union([t.String(), t.Null()])),
   description: t.Optional(t.Union([t.String(), t.Null()])),
+  users: t.Optional(t.Array(userSimple)),
 });
 
 // ── GET /roles ──────────────────────────────────────────────
 export const listRolesDocs = {
   detail: {
     summary: 'Daftar Semua Role',
-    description: 'Mengambil daftar role dengan paginasi dan filter. Membutuhkan izin ROL (Read).',
+    description: 'Mengambil daftar role dengan paginasi, filter, dan daftar pengguna terkait. Membutuhkan izin ROL (Read).',
     tags: ['Roles'],
     security: [{ bearerAuth: [] }],
   },
@@ -30,6 +37,20 @@ export const listRolesDocs = {
     type: t.Optional(t.String()),
     cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor. Data diurutkan via ID ASC.' })),
   }),
+};
+
+// ── GET /roles/:id ──────────────────────────────────────────
+export const getRoleDocs = {
+  detail: {
+    summary: 'Detail Role',
+    description: 'Mengambil detail role beserta daftar pengguna yang memilikinya.',
+    tags: ['Roles'],
+    security: [{ bearerAuth: [] }],
+  },
+  response: {
+    200: successResponse(roleResponseObj),
+    ...errorResponses([401, 403, 404, 500]),
+  },
 };
 
 // ── POST /roles ─────────────────────────────────────────────

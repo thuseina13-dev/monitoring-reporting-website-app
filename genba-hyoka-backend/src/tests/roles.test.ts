@@ -3,7 +3,7 @@ import { Elysia } from 'elysia';
 
 // ── Mock Database Robust Chain ───────────────────────────────
 const mockRoles = [
-  { id: 'role-1', code: 'adm', name: 'Admin', description: 'Administrator', createdAt: new Date(), deletedAt: null },
+  { id: 'role-1', code: 'adm', name: 'Admin', description: 'Administrator', createdAt: new Date(), deletedAt: null, users: [] },
 ];
 
 const createMockChain = (value: any) => {
@@ -52,7 +52,7 @@ async function getTestToken(): Promise<string> {
 mock.module("../db", () => ({
   db: {
     select: (fields: any) => {
-        if (fields && fields.count) return createMockChain([{ count: 1 }]);
+        if (fields && fields.count) return createMockChain([{ count: 0 }]); // Default 0 usage
         // Default return empty for uniqueness checks
         return createMockChain([]);
     },
@@ -107,7 +107,6 @@ describe('Roles Module - Unit Test /v1/roles', () => {
       })
     );
     const body = await response.json();
-    if (response.status !== 201) console.log('POST /v1/roles fail:', body);
     expect(response.status).toBe(201);
     expect(body.success).toBe(true);
   });
@@ -131,10 +130,9 @@ describe('Roles Module - Unit Test /v1/roles', () => {
   });
 
   it('DELETE /v1/roles/:id > Harus blokir penghapusan jika role tipe super_admin (403)', async () => {
-    const transactionSpy = spyOn(db, 'transaction');
-    transactionSpy.mockImplementation(async (fn: Function) => fn({
-        select: (() => createMockChain([{ id: 'role-super', name: 'Super Admin', type: 'super_admin' }])) as any,
-    }));
+    const selectSpy = spyOn(db, 'select');
+    // Mock existence check outside transaction
+    selectSpy.mockImplementation((() => createMockChain([{ id: 'role-super', name: 'Super Admin', type: 'super_admin' }])) as any);
 
     const token = await getTestToken();
     const response = await app.handle(
@@ -146,6 +144,6 @@ describe('Roles Module - Unit Test /v1/roles', () => {
     const body = await response.json();
     expect(response.status).toBe(403);
     expect(body.message).toBe('Peran Sistem Induk bersifat Read-Only');
-    transactionSpy.mockRestore();
+    selectSpy.mockRestore();
   });
 });

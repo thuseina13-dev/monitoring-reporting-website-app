@@ -1,6 +1,12 @@
 import { t } from 'elysia';
 import { errorResponses, paginatedResponse, successResponse } from '../../../utils/schema';
 
+const userSimple = t.Object({
+  id: t.String(),
+  fullName: t.String(),
+  email: t.String(),
+});
+
 const companyProfileResponseObj = t.Object({
   id: t.String(),
   name: t.String(),
@@ -9,12 +15,13 @@ const companyProfileResponseObj = t.Object({
   logo: t.Union([t.String(), t.Null()]),
   phoneNo: t.Union([t.String(), t.Null()]),
   email: t.Union([t.String(), t.Null()]),
+  users: t.Optional(t.Array(userSimple)),
 });
 
 export const listCompanyProfilesDocs = {
   detail: {
     summary: 'Daftar Company Profile',
-    description: 'Get list of company profiles with pagination and filtering',
+    description: 'Get list of company profiles with pagination and filtering. Includes associated users.',
     tags: ['Company Profiles'],
     security: [{ bearerAuth: [] }],
   },
@@ -37,7 +44,7 @@ export const listCompanyProfilesDocs = {
 export const getCompanyProfileDocs = {
   detail: {
     summary: 'Detail Company Profile',
-    description: 'Get company profile by ID',
+    description: 'Get company profile by ID including associated users.',
     tags: ['Company Profiles'],
     security: [{ bearerAuth: [] }],
   },

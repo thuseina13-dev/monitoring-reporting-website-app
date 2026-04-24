@@ -1,16 +1,19 @@
 import { Elysia } from 'elysia';
 import { db } from '../../../db';
-import { roles, userRoles } from '../../../db/schema';
+import { roles, userRoles, users } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, gt, asc, isNull } from 'drizzle-orm';
+import { eq, and, count, gt, asc, inArray } from 'drizzle-orm';
 import { buildFilters } from '../../../utils/filter';
+
 import { AppError } from '../../../utils/AppError';
 import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
 import { jwtGuard } from '../../../middlewares/jwtGuard';
 import { rbac } from '../../../middlewares/rbacGuard';
 import { PERMISSION_BIT } from '../../auth/constants/permissions';
+
 import {
   listRolesDocs,
+  getRoleDocs,
   createRoleDocs,
   updateRoleDocs,
   deleteRoleDocs,
@@ -19,7 +22,7 @@ import {
 export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   .use(jwtGuard)
 
-  // ── GET /roles ──────────────────────────────────────────────
+  // ── GET /roles (List with Users) ────────────────────────────
   .get(
     '/',
     async ({ query }) => {
@@ -32,13 +35,10 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
       const offset = query.cursor ? undefined : (page - 1) * limit;
 
       const filters = buildFilters(roles, query, [
-        'name',
         'code',
-        'type',
-        'description'
+        'name',
+        'type'
       ]);
-
-      filters.push(isNull(roles.deletedAt));
 
       if (query.cursor) {
         filters.push(gt(roles.id, query.cursor));
@@ -63,14 +63,32 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
         return sendSuccessPagination([], { total: 0, current_page: page, last_page: 0, limit });
       }
 
-      const total = Number(totalCount.count);
-      const nextCursor = roleList.length === limit ? roleList[roleList.length - 1].id : null;
+      // Fetch users for these roles
+      const roleIds = roleList.map(r => r.id);
+      const rolesWithUsers = await db
+        .select({
+          roleId: userRoles.roleId,
+          userId: users.id,
+          fullName: users.fullName,
+          email: users.email
+        })
+        .from(userRoles)
+        .innerJoin(users, eq(userRoles.userId, users.id))
+        .where(inArray(userRoles.roleId, roleIds));
 
+      const dataWithUsers = roleList.map(role => ({
+        ...role,
+        users: rolesWithUsers
+          .filter(ru => ru.roleId === role.id)
+          .map(ru => ({ id: ru.userId, fullName: ru.fullName, email: ru.email }))
+      }));
+
+      const total = Number(totalCount.count);
       const meta: any = { limit };
 
       if (query.cursor) {
-        meta.next_cursor = nextCursor;
-        meta.has_more = !!nextCursor;
+        meta.next_cursor = roleList.length === limit ? roleList[roleList.length - 1].id : null;
+        meta.has_more = !!meta.next_cursor;
       } else {
         meta.total = total;
         meta.current_page = page;
@@ -78,10 +96,35 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
         meta.has_more = page < meta.last_page;
       }
 
-      return sendSuccessPagination(roleList, meta, 'Data berhasil diambil');
+      return sendSuccessPagination(dataWithUsers, meta, 'Data berhasil diambil');
     },
     {
       ...listRolesDocs,
+      beforeHandle: rbac('ROL', PERMISSION_BIT.READ)
+    }
+  )
+
+  // ── GET /roles/:id (Detail with Users) ──────────────────────
+  .get(
+    '/:id',
+    async ({ params }) => {
+      const [role] = await db.select().from(roles).where(eq(roles.id, params.id)).limit(1);
+      if (!role) throw new AppError(404, 'Role tidak ditemukan');
+
+      const roleUsers = await db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          email: users.email
+        })
+        .from(userRoles)
+        .innerJoin(users, eq(userRoles.userId, users.id))
+        .where(eq(userRoles.roleId, params.id));
+
+      return sendSuccess({ ...role, users: roleUsers }, 'Data berhasil diambil');
+    },
+    {
+      ...getRoleDocs,
       beforeHandle: rbac('ROL', PERMISSION_BIT.READ)
     }
   )
@@ -108,14 +151,14 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
         await createAuditLog({
           userId: currentUser.id!,
           type: 'POST',
-          description: `Menambahkan role baru: ${name}`
+          description: `Membuat role baru: ${name} (${code})`
         }, tx);
 
         return inserted;
       });
 
       set.status = 201;
-      return sendSuccess(newRole, 'Role berhasil dibuat.');
+      return sendSuccess(newRole, 'Role berhasil dibuat');
     },
     {
       ...createRoleDocs,
@@ -127,37 +170,37 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   .put(
     '/:id',
     async ({ params, body, currentUser }) => {
-      const [existing] = await db.select().from(roles).where(and(eq(roles.id, params.id), isNull(roles.deletedAt))).limit(1);
-      if (!existing) throw new AppError(404, 'Role tidak ditemukan.');
+      const [existing] = await db.select().from(roles).where(eq(roles.id, params.id)).limit(1);
+      if (!existing) throw new AppError(404, 'Role tidak ditemukan');
 
+      // Proteksi super_admin
       if (existing.type === 'super_admin') {
         throw new AppError(403, 'Peran Sistem Induk bersifat Read-Only');
       }
 
-      const updated = await db.transaction(async (tx) => {
+      const updatedRole = await db.transaction(async (tx) => {
         const updateData: Record<string, any> = { updatedBy: currentUser.id };
         if (body.code) updateData.code = body.code;
         if (body.name) updateData.name = body.name;
         if (body.type) updateData.type = body.type;
         if (body.description !== undefined) updateData.description = body.description;
 
-        const [inserted] = await tx
+        const [updated] = await tx
           .update(roles)
           .set(updateData)
           .where(eq(roles.id, params.id))
           .returning();
 
-        // Simpan Audit Log
         await createAuditLog({
           userId: currentUser.id!,
           type: 'PUT',
-          description: `Memperbarui role: ${existing.name} -> ${body.name || existing.name}`
+          description: `Memperbarui role ID: ${params.id}`
         }, tx);
 
-        return inserted;
+        return updated;
       });
 
-      return sendSuccess(updated, 'Detail Role berhasil diperbarui.');
+      return sendSuccess(updatedRole, 'Role berhasil diperbarui');
     },
     {
       ...updateRoleDocs,
@@ -169,39 +212,30 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   .delete(
     '/:id',
     async ({ params, currentUser }) => {
+      const [existing] = await db.select().from(roles).where(eq(roles.id, params.id)).limit(1);
+      if (!existing) throw new AppError(404, 'Role tidak ditemukan');
+
+      if (existing.type === 'super_admin') {
+        throw new AppError(403, 'Peran Sistem Induk bersifat Read-Only');
+      }
+
+      // Cek jika masih ada user yang pakai role ini
+      const [usage] = await db.select({ count: count() }).from(userRoles).where(eq(userRoles.roleId, params.id));
+      if (Number(usage.count) > 0) {
+        throw new AppError(400, 'Role masih digunakan oleh beberapa pengguna.');
+      }
+
       await db.transaction(async (tx) => {
-        const [role] = await tx.select().from(roles).where(and(eq(roles.id, params.id), isNull(roles.deletedAt))).limit(1);
-        if (!role) throw new AppError(404, 'Role tidak ditemukan.');
-
-        if (role.type === 'super_admin') {
-          throw new AppError(403, 'Peran Sistem Induk bersifat Read-Only');
-        }
-
-        const [usageCount] = await tx
-          .select({ count: count() })
-          .from(userRoles)
-          .where(eq(userRoles.roleId, params.id));
-
-        if (Number(usageCount.count) > 0) {
-          await tx
-            .update(roles)
-            .set({ 
-              deletedAt: new Date(), 
-              deletedBy: currentUser.id 
-            } as any)
-            .where(eq(roles.id, params.id));
-        } else {
-          await tx.delete(roles).where(eq(roles.id, params.id));
-        }
+        await tx.delete(roles).where(eq(roles.id, params.id));
 
         await createAuditLog({
           userId: currentUser.id!,
           type: 'DELETE',
-          description: `Menghapus role: ${role.name}`
+          description: `Menghapus role: ${existing.name}`
         }, tx);
       });
 
-      return sendSuccess(null, 'Role berhasil dihapus/dinonaktifkan.');
+      return sendSuccess(null, 'Role berhasil dihapus');
     },
     {
       ...deleteRoleDocs,

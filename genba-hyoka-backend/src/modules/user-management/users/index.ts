@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import { db } from '../../../db';
-import { users, sessions, roles, userRoles } from '../../../db/schema';
+import { users, sessions, roles, userRoles, companyProfiles } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
 import { eq, and, count, inArray, gt, asc } from 'drizzle-orm';
 
@@ -29,12 +29,13 @@ const userPublicFields = {
   address: users.address,
   gender: users.gender,
   isActive: users.isActive,
+  companyProfileId: users.companyProfileId,
 };
 
 export const usersModule = new Elysia({ prefix: '/v1/users' })
   .use(jwtGuard)
 
-  // ── GET /users (List with Roles) ────────────────────────────
+  // ── GET /users (List with Roles & Company) ──────────────────
   .get(
     '/',
     async ({ query }) => {
@@ -52,7 +53,8 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         'isActive', 
         'gender', 
         'address', 
-        'phoneNo'
+        'phoneNo',
+        'companyProfileId'
       ]);
 
       if (query.cursor) {
@@ -62,8 +64,15 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
       const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
       const userList = await db
-        .select(userPublicFields)
+        .select({
+          ...userPublicFields,
+          companyProfile: {
+            id: companyProfiles.id,
+            name: companyProfiles.name,
+          }
+        })
         .from(users)
+        .leftJoin(companyProfiles, eq(users.companyProfileId, companyProfiles.id))
         .where(whereClause)
         .orderBy(asc(users.id))
         .limit(limit)
@@ -111,7 +120,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         meta.has_more = page < meta.last_page;
       }
 
-      return sendSuccessPagination(dataWithRoles, meta, 'Data retrieved successfully');
+      return sendSuccessPagination(dataWithRoles, meta, 'Data berhasil diambil');
     },
     {
       ...listUsersDocs,
@@ -119,11 +128,23 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
     }
   )
 
-  // ── GET /users/:id (Detail with Roles) ──────────────────────
+  // ── GET /users/:id (Detail with Roles & Company) ────────────
   .get(
     '/:id',
     async ({ params }) => {
-      const [user] = await db.select(userPublicFields).from(users).where(eq(users.id, params.id)).limit(1);
+      const [user] = await db
+        .select({
+          ...userPublicFields,
+          companyProfile: {
+            id: companyProfiles.id,
+            name: companyProfiles.name,
+          }
+        })
+        .from(users)
+        .leftJoin(companyProfiles, eq(users.companyProfileId, companyProfiles.id))
+        .where(eq(users.id, params.id))
+        .limit(1);
+
       if (!user) throw new AppError(404, 'Pengguna tidak ditemukan.');
 
       const userRolesData = await db
@@ -140,11 +161,11 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
     }
   )
 
-  // ── POST /users (Create with Roles) ─────────────────────────
+  // ── POST /users (Create with Roles & Company) ───────────────
   .post(
     '/',
     async ({ body, set, currentUser }) => {
-      const { fullName, email, password, roleIds } = body;
+      const { fullName, email, password, roleIds, companyProfileId } = body;
 
       const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
       if (existing) throw new AppError(400, 'Email sudah terdaftar.');
@@ -156,6 +177,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
           .insert(users)
           .values({
             fullName, email, password: hashedPassword, isActive: true,
+            companyProfileId: companyProfileId || null,
             ...(currentUser.id && { createdBy: currentUser.id } as any),
           } as any)
           .returning(userPublicFields);
@@ -179,7 +201,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
       });
 
       set.status = 201;
-      return sendSuccess(newUser, 'Pengguna berhasil didaftarkan dengan role.');
+      return sendSuccess(newUser, 'Pengguna berhasil didaftarkan.');
     },
     {
       ...registerUserDocs,
@@ -187,7 +209,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
     }
   )
 
-  // ── PUT /users/:id (Update with Role Sync) ──────────────────
+  // ── PUT /users/:id (Update with Relation Sync) ──────────────
   .put(
     '/:id',
     async ({ params, body, currentUser }) => {
@@ -211,6 +233,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         if (body.address !== undefined) updateData.address = body.address;
         if (body.gender !== undefined) updateData.gender = body.gender;
         if (body.isActive !== undefined) updateData.isActive = body.isActive;
+        if (body.companyProfileId !== undefined) updateData.companyProfileId = body.companyProfileId;
         if (body.password) updateData.password = await Bun.password.hash(body.password);
         
         if (body.email) {
@@ -243,7 +266,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         return inserted;
       });
 
-      return sendSuccess(updated, 'Profil dan Role berhasil diperbarui.');
+      return sendSuccess(updated, 'Profil berhasil diperbarui.');
     },
     {
       ...updateUserDocs,

@@ -4,9 +4,9 @@ import { jwt as elysiaJwt } from '@elysiajs/jwt';
 
 // ── Mock Database ───────────────────────────────────────────
 const mockUsers = [
-  { id: '1', fullName: 'Alice Smith', email: 'alice@example.com', isActive: true },
-  { id: '2', fullName: 'Bob Jones', email: 'bob@example.com', isActive: false },
-  { id: '3', fullName: 'Charlie Brown', email: 'charlie@example.com', isActive: true },
+  { id: '1', fullName: 'Alice Smith', email: 'alice@example.com', isActive: true, phoneNo: null, address: null, gender: null, companyProfileId: null, roles: [] },
+  { id: '2', fullName: 'Bob Jones', email: 'bob@example.com', isActive: false, phoneNo: null, address: null, gender: null, companyProfileId: null, roles: [] },
+  { id: '3', fullName: 'Charlie Brown', email: 'charlie@example.com', isActive: true, phoneNo: null, address: null, gender: null, companyProfileId: null, roles: [] },
 ];
 
 const createMockChain = (value: any) => ({
@@ -104,4 +104,3 @@ describe('Users Module - Pagination & Search Test', () => {
     expect(body.message).toBe('Paginasi page dan cursor tidak dapat digunakan secara bersamaan.');
   });
 });
-
