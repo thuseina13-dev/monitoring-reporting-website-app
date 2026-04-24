@@ -2,7 +2,8 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db';
 import { roles, userRoles } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, count, and, isNull } from 'drizzle-orm';
+import { eq, and, count, gt, asc, isNull } from 'drizzle-orm';
+import { buildFilters } from '../../../utils/filter';
 import { AppError } from '../../../utils/AppError';
 import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
 import { jwtGuard } from '../../../middlewares/jwtGuard';
@@ -22,30 +23,62 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   .get(
     '/',
     async ({ query }) => {
+      if (query.page && query.cursor) {
+        throw new AppError(400, 'Paginasi page dan cursor tidak dapat digunakan secara bersamaan.');
+      }
+
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
-      const offset = (page - 1) * limit;
+      const offset = query.cursor ? undefined : (page - 1) * limit;
 
-      // 1. Ambil Data Role
+      const filters = buildFilters(roles, query, [
+        'name',
+        'code',
+        'type',
+        'description'
+      ]);
+
+      filters.push(isNull(roles.deletedAt));
+
+      if (query.cursor) {
+        filters.push(gt(roles.id, query.cursor));
+      }
+
+      const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
       const roleList = await db
         .select()
         .from(roles)
-        .where(isNull(roles.deletedAt))
+        .where(whereClause)
+        .orderBy(asc(roles.id))
         .limit(limit)
-        .offset(offset);
+        .offset(offset as any);
 
       const [totalCount] = await db
         .select({ count: count() })
         .from(roles)
-        .where(isNull(roles.deletedAt));
+        .where(whereClause);
+
+      if (roleList.length === 0) {
+        return sendSuccessPagination([], { total: 0, current_page: page, last_page: 0, limit });
+      }
 
       const total = Number(totalCount.count);
-      return sendSuccessPagination(roleList, {
-        total,
-        current_page: page,
-        last_page: Math.ceil(total / limit),
-        limit,
-      });
+      const nextCursor = roleList.length === limit ? roleList[roleList.length - 1].id : null;
+
+      const meta: any = { limit };
+
+      if (query.cursor) {
+        meta.next_cursor = nextCursor;
+        meta.has_more = !!nextCursor;
+      } else {
+        meta.total = total;
+        meta.current_page = page;
+        meta.last_page = Math.ceil(total / limit);
+        meta.has_more = page < meta.last_page;
+      }
+
+      return sendSuccessPagination(roleList, meta, 'Data berhasil diambil');
     },
     {
       ...listRolesDocs,
@@ -57,16 +90,16 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   .post(
     '/',
     async ({ body, currentUser, set }) => {
-      const { name, description } = body;
+      const { code, name, type, description } = body;
 
-      const [existing] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, name)).limit(1);
-      if (existing) throw new AppError(400, 'Nama role sudah terdaftar.');
+      const [existing] = await db.select({ id: roles.id }).from(roles).where(eq(roles.code, code)).limit(1);
+      if (existing) throw new AppError(400, 'Kode role sudah terdaftar.');
 
       const newRole = await db.transaction(async (tx) => {
         const [inserted] = await tx
           .insert(roles)
           .values({
-            name, description,
+            code, name, type, description,
             ...(currentUser.id && { createdBy: currentUser.id } as any)
           } as any)
           .returning();
@@ -94,7 +127,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   .put(
     '/:id',
     async ({ params, body, currentUser }) => {
-      const [existing] = await db.select().from(roles).where(eq(roles.id, params.id)).limit(1);
+      const [existing] = await db.select().from(roles).where(and(eq(roles.id, params.id), isNull(roles.deletedAt))).limit(1);
       if (!existing) throw new AppError(404, 'Role tidak ditemukan.');
 
       if (existing.type === 'super_admin') {
@@ -103,7 +136,9 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
 
       const updated = await db.transaction(async (tx) => {
         const updateData: Record<string, any> = { updatedBy: currentUser.id };
+        if (body.code) updateData.code = body.code;
         if (body.name) updateData.name = body.name;
+        if (body.type) updateData.type = body.type;
         if (body.description !== undefined) updateData.description = body.description;
 
         const [inserted] = await tx
@@ -135,7 +170,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
     '/:id',
     async ({ params, currentUser }) => {
       await db.transaction(async (tx) => {
-        const [role] = await tx.select().from(roles).where(eq(roles.id, params.id)).limit(1);
+        const [role] = await tx.select().from(roles).where(and(eq(roles.id, params.id), isNull(roles.deletedAt))).limit(1);
         if (!role) throw new AppError(404, 'Role tidak ditemukan.');
 
         if (role.type === 'super_admin') {
@@ -173,4 +208,3 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
       beforeHandle: rbac('ROL', PERMISSION_BIT.DELETE)
     }
   );
-

@@ -11,6 +11,8 @@ const createMockChain = (value: any) => {
     limit: () => chain,
     offset: () => chain,
     orderBy: () => chain,
+    asc: () => chain,
+    desc: () => chain,
     where: () => chain,
 
     innerJoin: () => chain,
@@ -51,11 +53,7 @@ mock.module("../db", () => ({
     select: (fields: any) => {
         if (fields && fields.count) return createMockChain([{ count: 1 }]);
         if (fields && fields.roleId) return createMockChain([{ userId: 'user-uuid-1', roleId: 'role-1', roleName: 'Admin' }]);
-        // Jika sedang mencari user spesifik (misal PUT/DELETE)
-        if (fields && fields.id) return createMockChain([{ id: 'user-uuid-1' }]);
-        
-        // DEFAULT: Return empty untuk POST (email check)
-        // Kecuali jika test butuh data list
+        // Default return empty for POST uniqueness checks
         return createMockChain([]); 
     },
 
@@ -65,9 +63,10 @@ mock.module("../db", () => ({
     transaction: async (fn: Function) => fn({
         insert: () => createMockChain([mockUsers[0]]),
         select: (fields: any) => {
-          // Default untuk pengecekan dalam transaksi (biasanya link role)
-          return createMockChain([]);
+          if (fields && fields.roleId) return createMockChain([{ roleId: 'role-super' }]);
+          return createMockChain([{ id: 'user-uuid-1' }]);
         },
+        innerJoin: () => createMockChain([{ roleId: 'role-super', type: 'super_admin' }]),
         update: () => createMockChain([mockUsers[0]]),
         delete: () => createMockChain([]),
     }),
@@ -89,7 +88,6 @@ describe('Users Module - Unit Test /v1/users', () => {
   it('Harus mengembalikan daftar users (200)', async () => {
     const token = await getTestToken();
     const response = await app.handle(
-
       new Request('http://localhost/v1/users', {
         method: 'GET',
         headers: { Authorization: `Bearer ${token}` },
@@ -101,7 +99,6 @@ describe('Users Module - Unit Test /v1/users', () => {
   });
 
   it('Harus berhasil mendaftarkan user baru dengan roleIds (201)', async () => {
-
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/users', {
@@ -121,7 +118,6 @@ describe('Users Module - Unit Test /v1/users', () => {
   });
 
   it('POST /v1/users > Harus berhasil daftar meskipun roleIds kosong (201)', async () => {
-
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/users', {
@@ -139,6 +135,9 @@ describe('Users Module - Unit Test /v1/users', () => {
   });
 
   it('PUT /v1/users/:id > Harus blokir jika user terhubung ke role super_admin (403)', async () => {
+    // Mock existence check to return user
+    const selectSpy = spyOn(db, 'select');
+    selectSpy.mockImplementation((() => createMockChain([{ id: 'user-super' }])) as any);
 
     const token = await getTestToken();
     const response = await app.handle(
@@ -151,10 +150,10 @@ describe('Users Module - Unit Test /v1/users', () => {
     const body = await response.json();
     expect(response.status).toBe(403);
     expect(body.message).toBe('Akun Master Sistem tidak dapat dimodifikasi atau dihapus');
+    selectSpy.mockRestore();
   });
 
   it('DELETE /v1/users/:id > Harus blokir jika user terhubung ke role super_admin (403)', async () => {
-
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/users/user-super', {

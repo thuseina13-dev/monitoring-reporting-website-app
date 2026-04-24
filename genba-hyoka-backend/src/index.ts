@@ -5,6 +5,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import { authModule } from './modules/auth';
 import { usersModule } from './modules/user-management/users';
 import { rolesModule } from './modules/user-management/roles';
+import { companyProfileModule } from './modules/user-management/company-profile';
 import { swagger } from '@elysiajs/swagger';
 import { errorSchema } from './utils/schema';
 
@@ -39,6 +40,7 @@ const app = new Elysia()
   .use(authModule)
   .use(usersModule)
   .use(rolesModule)
+  .use(companyProfileModule)
   .onStart(async () => {
     const isConnected = await checkConnection();
     if (isConnected) {

@@ -3,7 +3,7 @@ import { Elysia } from 'elysia';
 
 // ── Mock Database Robust Chain ───────────────────────────────
 const mockRoles = [
-  { id: 'role-1', name: 'Admin', description: 'Administrator', createdAt: new Date(), deletedAt: null },
+  { id: 'role-1', code: 'adm', name: 'Admin', description: 'Administrator', createdAt: new Date(), deletedAt: null },
 ];
 
 const createMockChain = (value: any) => {
@@ -12,6 +12,9 @@ const createMockChain = (value: any) => {
     limit: () => chain,
     offset: () => chain,
     where: () => chain,
+    orderBy: () => chain,
+    asc: () => chain,
+    desc: () => chain,
     innerJoin: () => chain,
     leftJoin: () => chain,
     values: () => chain,
@@ -57,7 +60,7 @@ mock.module("../db", () => ({
     transaction: async (fn: Function) => fn({
         insert: () => createMockChain([mockRoles[0]]),
         select: (fields: any) => {
-            return createMockChain([{ id: 'role-1', name: 'Admin', type: 'admin' }]);
+            return createMockChain([{ id: 'role-1', code: 'adm', name: 'Admin', type: 'admin' }]);
         },
         delete: () => createMockChain([]),
         update: () => createMockChain([mockRoles[0]]),
@@ -97,12 +100,14 @@ describe('Roles Module - Unit Test /v1/roles', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ 
+            code: 'NEW',
             name: 'New Role UNIQUE', 
             description: 'Test description'
         }),
       })
     );
     const body = await response.json();
+    if (response.status !== 201) console.log('POST /v1/roles fail:', body);
     expect(response.status).toBe(201);
     expect(body.success).toBe(true);
   });
