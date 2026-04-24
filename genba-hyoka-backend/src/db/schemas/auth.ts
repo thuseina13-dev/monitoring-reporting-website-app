@@ -1,5 +1,7 @@
 import { pgTable, uuid, varchar, integer, boolean, text, timestamp, pgEnum, index, uniqueIndex, unique } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 import { auditColumns } from './_utils/audit';
+import { companyProfiles } from './company';
 
 export const genderEnum = pgEnum('gender', ['male', 'female']);
 
@@ -31,8 +33,6 @@ export const users = pgTable('users', {
   companyProfileIdIdx: index('company_profile_id_idx').on(table.companyProfileId),
 }));
 
-
-
 export const userRoles = pgTable('user_roles', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id),
@@ -42,8 +42,6 @@ export const userRoles = pgTable('user_roles', {
   userIdRoleIdIdx: uniqueIndex('user_id_role_id_idx').on(table.userId, table.roleId),
   unq: unique().on(table.userId, table.roleId),
 }));
-
-
 
 export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -60,7 +58,31 @@ export const auditLogs = pgTable('audit_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').references(() => users.id),
   description: text('description').notNull(),
-  type: varchar('type', { length: 255 }).notNull(), // Contoh: GET, POST, LOGIN, dll
+  type: varchar('type', { length: 255 }).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   createdBy: uuid('created_by'),
 });
+
+// ── RELATIONS ────────────────────────────────────────────────
+export const usersRelations = relations(users, ({ one, many }) => ({
+  companyProfile: one(companyProfiles, {
+    fields: [users.companyProfileId],
+    references: [companyProfiles.id],
+  }),
+  userRoles: many(userRoles),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  userRoles: many(userRoles),
+}));
+
+export const userRolesRelations = relations(userRoles, ({ one }) => ({
+  user: one(users, {
+    fields: [userRoles.userId],
+    references: [users.id],
+  }),
+  role: one(roles, {
+    fields: [userRoles.roleId],
+    references: [roles.id],
+  }),
+}));

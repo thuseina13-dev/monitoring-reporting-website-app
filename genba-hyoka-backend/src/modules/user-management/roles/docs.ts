@@ -1,19 +1,29 @@
 import { t } from 'elysia';
 import { errorResponses, paginatedResponse, successResponse } from '../../../utils/schema';
 
+const userNested = t.Object({
+  fullName: t.String(),
+  email: t.String(),
+  phoneNo: t.Union([t.String(), t.Null()]),
+  address: t.Union([t.String(), t.Null()]),
+  gender: t.Union([t.String(), t.Null()]),
+  isActive: t.Boolean(),
+});
+
 const roleResponseObj = t.Object({
   id: t.String(),
   code: t.String(),
   name: t.String(),
   type: t.Optional(t.Union([t.String(), t.Null()])),
   description: t.Optional(t.Union([t.String(), t.Null()])),
+  users: t.Optional(t.Array(userNested)),
 });
 
 // ── GET /roles ──────────────────────────────────────────────
 export const listRolesDocs = {
   detail: {
     summary: 'Daftar Semua Role',
-    description: 'Mengambil daftar role dengan paginasi dan filter. Membutuhkan izin ROL (Read).',
+    description: 'Mengambil daftar role. Gunakan query "include=users" untuk memuat daftar pengguna terkait dengan detail lengkap (kecuali ID).',
     tags: ['Roles'],
     security: [{ bearerAuth: [] }],
   },
@@ -28,8 +38,26 @@ export const listRolesDocs = {
     code: t.Optional(t.String()),
     name: t.Optional(t.String()),
     type: t.Optional(t.String()),
-    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor. Data diurutkan via ID ASC.' })),
+    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor.' })),
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
   }),
+};
+
+// ── GET /roles/:id ──────────────────────────────────────────
+export const getRoleDocs = {
+  detail: {
+    summary: 'Detail Role',
+    description: 'Mengambil detail role. Gunakan query "include=users" untuk memuat daftar pengguna terkait dengan detail lengkap (kecuali ID).',
+    tags: ['Roles'],
+    security: [{ bearerAuth: [] }],
+  },
+  query: t.Object({
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
+  }),
+  response: {
+    200: successResponse(roleResponseObj),
+    ...errorResponses([401, 403, 404, 500]),
+  },
 };
 
 // ── POST /roles ─────────────────────────────────────────────

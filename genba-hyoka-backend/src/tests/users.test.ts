@@ -2,7 +2,7 @@ import { Elysia } from 'elysia';
 
 // ── Mock Database Robust Helper ──────────────────────────────
 const mockUsers = [
-  { id: 'user-uuid-1', fullName: 'Administrator', email: 'admin@genba.com', isActive: true, phoneNo: null, address: null, gender: null, createdAt: new Date() },
+  { id: 'user-uuid-1', fullName: 'Administrator', email: 'admin@genba.com', isActive: true, phoneNo: null, address: null, gender: null, createdAt: new Date(), companyProfileId: null, companyProfile: null, roles: [] },
 ];
 
 const createMockChain = (value: any) => {
@@ -50,10 +50,15 @@ async function getTestToken(): Promise<string> {
 // ── Mock Database ───────────────────────────────────────────
 mock.module("../db", () => ({
   db: {
+    query: {
+      users: {
+        findMany: async () => mockUsers,
+        findFirst: async () => mockUsers[0],
+      }
+    },
     select: (fields: any) => {
         if (fields && fields.count) return createMockChain([{ count: 1 }]);
         if (fields && fields.roleId) return createMockChain([{ userId: 'user-uuid-1', roleId: 'role-1', roleName: 'Admin' }]);
-        // Default return empty for POST uniqueness checks
         return createMockChain([]); 
     },
 

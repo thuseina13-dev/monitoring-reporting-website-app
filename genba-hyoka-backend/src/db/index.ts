@@ -1,5 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import * as schema from './schema';
 
 // Mengambil variabel dari process.env
 const { DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME } = process.env;
@@ -18,7 +19,8 @@ const client = postgres(connectionString, {
 });
 
 // Export instance db untuk digunakan di seluruh aplikasi
-export const db = drizzle(client);
+// Menambahkan schema agar bisa menggunakan Relational Query Builder (RQB)
+export const db = drizzle(client, { schema });
 
 // Helper function untuk cek koneksi (Sanity Check)
 export const checkConnection = async () => {

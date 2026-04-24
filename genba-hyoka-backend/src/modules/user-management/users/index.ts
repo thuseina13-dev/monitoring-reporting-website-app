@@ -1,11 +1,10 @@
 import { Elysia } from 'elysia';
 import { db } from '../../../db';
-import { users, sessions, roles, userRoles } from '../../../db/schema';
+import { users, sessions, roles, userRoles, companyProfiles } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, inArray, gt, asc } from 'drizzle-orm';
+import { eq, and, count, inArray, gt, asc, or, ilike } from 'drizzle-orm';
 
-import { buildFilters } from '../../../utils/filter';
-
+import { buildRQBWhere } from '../../../utils/filter';
 
 import { AppError } from '../../../utils/AppError';
 import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
@@ -29,12 +28,13 @@ const userPublicFields = {
   address: users.address,
   gender: users.gender,
   isActive: users.isActive,
+  companyProfileId: users.companyProfileId,
 };
 
 export const usersModule = new Elysia({ prefix: '/v1/users' })
   .use(jwtGuard)
 
-  // ── GET /users (List with Roles) ────────────────────────────
+  // ── GET /users (Smart RQB) ──────────────────────────────────
   .get(
     '/',
     async ({ query }) => {
@@ -42,76 +42,90 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         throw new AppError(400, 'Paginasi page dan cursor tidak dapat digunakan secara bersamaan.');
       }
 
+      const includes = query.include ? query.include.split(',') : [];
+      const includeRoles = includes.includes('roles');
+      const includeCompany = includes.includes('company');
+
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
       const offset = query.cursor ? undefined : (page - 1) * limit;
 
-      const filters = buildFilters(users, query, [
-        'fullName', 
-        'email', 
-        'isActive', 
-        'gender', 
-        'address', 
-        'phoneNo'
-      ]);
+      // ── Filter Logic with buildRQBWhere ───────────────────
+      const filterOptions = {
+        searchFields: ['fullName', 'email', 'phoneNo', 'address'],
+        exactFields: ['isActive', 'gender', 'companyProfileId']
+      };
 
-      if (query.cursor) {
-        filters.push(gt(users.id, query.cursor));
-      }
+      // ── RQB Query ──────────────────────────────────────────
+      const userList = await db.query.users.findMany({
+        where: (fields, ops) => buildRQBWhere(fields, ops, query, filterOptions),
+        orderBy: [asc(users.id)],
+        limit: limit,
+        offset: offset,
+        with: {
+          ...(includeCompany && {
+            companyProfile: {
+              columns: {
+                id: false,
+                name: true,
+                desc: true,
+                address: true,
+                logo: true,
+                phoneNo: true,
+                email: true,
+              }
+            }
+          }),
+          ...(includeRoles && {
+            userRoles: {
+              with: {
+                role: {
+                  columns: {
+                    id: false,
+                    code: true,
+                    name: true,
+                    type: true,
+                    description: true,
+                  }
+                }
+              }
+            }
+          })
+        }
+      });
 
-      const whereClause = filters.length > 0 ? and(...filters) : undefined;
+      // Transform many-to-many result from userRoles to flat roles array
+      const finalData = userList.map(u => {
+        const { userRoles, ...userData } = u as any;
+        return {
+          ...userData,
+          ...(includeRoles && {
+            roles: userRoles.map((ur: any) => ur.role)
+          })
+        };
+      });
 
-      const userList = await db
-        .select(userPublicFields)
-        .from(users)
-        .where(whereClause)
-        .orderBy(asc(users.id))
-        .limit(limit)
-        .offset(offset as any);
-
+      // ── Total Count for Meta ───────────────────────────────
       const [totalCount] = await db
         .select({ count: count() })
         .from(users)
-        .where(whereClause);
-
-      if (userList.length === 0) {
-        return sendSuccessPagination([], { total: 0, current_page: page, last_page: 0, limit });
-      }
-
-      const userIds = userList.map(u => u.id);
-      const allUserRoles = await db
-        .select({
-          userId: userRoles.userId,
-          roleId: roles.id,
-          roleName: roles.name
-        })
-        .from(userRoles)
-        .innerJoin(roles, eq(userRoles.roleId, roles.id))
-        .where(inArray(userRoles.userId, userIds));
-
-      const dataWithRoles = userList.map(user => ({
-        ...user,
-        roles: allUserRoles
-          .filter(ur => ur.userId === user.id)
-          .map(ur => ({ id: ur.roleId, name: ur.roleName }))
-      }));
+        .where(buildRQBWhere(users, { and, or, eq, ilike, gt }, query, filterOptions));
 
       const total = Number(totalCount.count);
-      const nextCursor = userList.length === limit ? userList[userList.length - 1].id : null;
+      const meta: any = { 
+        limit,
+        ...(query.cursor ? { 
+          next_cursor: userList.length === limit ? userList[userList.length - 1].id : null,
+          has_more: userList.length === limit
+        } : {
+          total,
+          current_page: page,
+          last_page: Math.ceil(total / limit),
+          has_more: page < Math.ceil(total / limit)
+        })
+      };
 
-      const meta: any = { limit };
-
-      if (query.cursor) {
-        meta.next_cursor = nextCursor;
-        meta.has_more = !!nextCursor;
-      } else {
-        meta.total = total;
-        meta.current_page = page;
-        meta.last_page = Math.ceil(total / limit);
-        meta.has_more = page < meta.last_page;
-      }
-
-      return sendSuccessPagination(dataWithRoles, meta, 'Data retrieved successfully');
+      return sendSuccessPagination(finalData, meta, 'Data berhasil diambil');
     },
     {
       ...listUsersDocs,
@@ -119,20 +133,59 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
     }
   )
 
-  // ── GET /users/:id (Detail with Roles) ──────────────────────
+  // ── GET /users/:id ──────────────────────────────────────────
   .get(
     '/:id',
-    async ({ params }) => {
-      const [user] = await db.select(userPublicFields).from(users).where(eq(users.id, params.id)).limit(1);
+    async ({ params, query }) => {
+      const includes = query.include ? query.include.split(',') : [];
+      const includeRoles = includes.includes('roles');
+      const includeCompany = includes.includes('company');
+
+      const user = await db.query.users.findFirst({
+        where: (u, { eq }) => eq(u.id, params.id),
+        with: {
+          ...(includeCompany && {
+            companyProfile: {
+              columns: {
+                id: false,
+                name: true,
+                desc: true,
+                address: true,
+                logo: true,
+                phoneNo: true,
+                email: true,
+              }
+            }
+          }),
+          ...(includeRoles && {
+            userRoles: {
+              with: {
+                role: {
+                  columns: {
+                    id: false,
+                    code: true,
+                    name: true,
+                    type: true,
+                    description: true,
+                  }
+                }
+              }
+            }
+          })
+        }
+      });
+
       if (!user) throw new AppError(404, 'Pengguna tidak ditemukan.');
 
-      const userRolesData = await db
-        .select({ id: roles.id, name: roles.name })
-        .from(userRoles)
-        .innerJoin(roles, eq(userRoles.roleId, roles.id))
-        .where(eq(userRoles.userId, user.id));
+      const { userRoles: ur, ...userData } = user as any;
+      const finalData = {
+        ...userData,
+        ...(includeRoles && {
+          roles: ur.map((item: any) => item.role)
+        })
+      };
 
-      return sendSuccess({ ...user, roles: userRolesData }, 'Data pengguna berhasil diambil.');
+      return sendSuccess(finalData, 'Data pengguna berhasil diambil.');
     },
     {
       ...getUserDocs,
@@ -140,11 +193,11 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
     }
   )
 
-  // ── POST /users (Create with Roles) ─────────────────────────
+  // ── POST /users ─────────────────────────────────────────────
   .post(
     '/',
     async ({ body, set, currentUser }) => {
-      const { fullName, email, password, roleIds } = body;
+      const { fullName, email, password, roleIds, companyProfileId } = body;
 
       const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
       if (existing) throw new AppError(400, 'Email sudah terdaftar.');
@@ -156,6 +209,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
           .insert(users)
           .values({
             fullName, email, password: hashedPassword, isActive: true,
+            companyProfileId: companyProfileId || null,
             ...(currentUser.id && { createdBy: currentUser.id } as any),
           } as any)
           .returning(userPublicFields);
@@ -179,7 +233,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
       });
 
       set.status = 201;
-      return sendSuccess(newUser, 'Pengguna berhasil didaftarkan dengan role.');
+      return sendSuccess(newUser, 'Pengguna berhasil didaftarkan.');
     },
     {
       ...registerUserDocs,
@@ -187,7 +241,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
     }
   )
 
-  // ── PUT /users/:id (Update with Role Sync) ──────────────────
+  // ── PUT /users/:id ──────────────────────────────────────────
   .put(
     '/:id',
     async ({ params, body, currentUser }) => {
@@ -211,6 +265,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         if (body.address !== undefined) updateData.address = body.address;
         if (body.gender !== undefined) updateData.gender = body.gender;
         if (body.isActive !== undefined) updateData.isActive = body.isActive;
+        if (body.companyProfileId !== undefined) updateData.companyProfileId = body.companyProfileId;
         if (body.password) updateData.password = await Bun.password.hash(body.password);
         
         if (body.email) {
@@ -243,7 +298,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         return inserted;
       });
 
-      return sendSuccess(updated, 'Profil dan Role berhasil diperbarui.');
+      return sendSuccess(updated, 'Profil berhasil diperbarui.');
     },
     {
       ...updateUserDocs,
