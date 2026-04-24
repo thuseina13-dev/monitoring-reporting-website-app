@@ -19,9 +19,11 @@ const fetchNotifications = async ({ pageParam = 1 }) => {
   }, 1000));
 };
 
+import { useWSStore } from '../../store/wsStore';
+
 export function Header() {
   const { activeRole, setActiveRole, roles } = useAuthStore() as any;
-  const [isOnline, setIsOnline] = useState(true); // TODO: actual websocket status
+  const wsStatus = useWSStore((state) => state.status);
   const router = useRouter()
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ['notifications'],
@@ -106,7 +108,14 @@ export function Header() {
         )}
 
         {/* Websocket status */}
-        <Circle size={10} backgroundColor={isOnline ?  COLORS['primary'] : COLORS['warning']} />
+        <Circle 
+          size={10} 
+          backgroundColor={
+            wsStatus === 'OPEN' ? COLORS['primary'] : 
+            wsStatus === 'CONNECTING' ? '#F1C40F' : 
+            COLORS['warning']
+          } 
+        />
 
         {/* Notification Bell */}
         <Popover size="$5" allowFlip placement="bottom">
