@@ -20,6 +20,7 @@ export const meDocs = {
       roles: t.Array(t.Object({
         code: t.String(),
         type: t.String(),
+        name: t.String(),
       })),
       iat: t.Number(),
       exp: t.Number(),
@@ -52,6 +53,7 @@ export const loginDocs = {
         roles: t.Array(t.Object({
           code: t.String(),
           type: t.String(),
+          name: t.String(),
         })),
         prm: t.Record(t.String(), t.Number()),
       }),

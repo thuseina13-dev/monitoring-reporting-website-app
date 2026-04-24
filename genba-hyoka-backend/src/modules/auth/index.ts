@@ -35,19 +35,21 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
       const userSelectedRoles = await db
         .select({ 
           code: roles.code,
-          type: roles.type 
+          type: roles.type,
+          name: roles.name
         })
         .from(userRoles)
         .innerJoin(roles, eq(userRoles.roleId, roles.id))
         .where(eq(userRoles.userId, userId));
 
       const prm: Record<string, number> = {};
-      const userRolesData: { code: string; type: string }[] = [];
+      const userRolesData: { code: string; type: string; name: string }[] = [];
 
       userSelectedRoles.forEach((row) => {
         const code = row.code as string;
         const type = row.type as string;
-        userRolesData.push({ code, type });
+        const name = row.name as string;
+        userRolesData.push({ code, type, name });
 
         // 2. Gabungkan permissions dari konstanta statis menggunakan OR
         const permissions = ROLE_PERMISSIONS[code as RoleCode];
