@@ -44,17 +44,19 @@ export function Header() {
     }
   };
 
-  const hanldeChangeRole = (role: string) => {
-    setActiveRole(role);
-    if(role === 'admin') {
+  const hanldeChangeRole = (code: string) => {
+    setActiveRole(code);
+    const roleType = roles.find((r: any) => r.code === code)?.type;
+
+    if(roleType === 'admin' || roleType === 'super_admin') {
       router.push('/(dashboard)/admin')
       return 
     }
-    if(role === 'employee') {
+    if(roleType === 'employee') {
       router.push('/(dashboard)/employee')
       return
     }
-    if(role === 'manager') {
+    if(roleType === 'manager') {
       router.push('/(dashboard)/manager')
       return
     }
@@ -87,9 +89,9 @@ export function Header() {
 
             <Select.Content>
               <Select.Viewport>
-                {roles.map((role: string, i: number) => (
-                  <Select.Item index={i} key={role} value={role}>
-                    <Select.ItemText fontSize="$2">{role.toUpperCase()}</Select.ItemText>
+                {roles.map((role: any, i: number) => (
+                  <Select.Item index={i} key={role.code} value={role.code}>
+                    <Select.ItemText fontSize="$2">{role.name.toUpperCase()}</Select.ItemText>
                   </Select.Item>
                 ))}
               </Select.Viewport>
@@ -98,7 +100,7 @@ export function Header() {
         ) : (
           <View backgroundColor="$gray2" borderRadius="$4" paddingHorizontal="$3" paddingVertical="$1.5">
             <Text fontSize="$2" fontWeight="bold">
-              {activeRole ? activeRole.toUpperCase() : 'USER'}
+              {activeRole ? (roles.find((r: any) => r.code === activeRole)?.name || activeRole).toUpperCase() : 'USER'}
             </Text>
           </View>
         )}

@@ -5,14 +5,15 @@ export interface User {
   id: string;
   fullName: string;
   email: string;
-  roles: string[];
-  prm: number;
+  roles: { code: string; name: string; type: string }[];
+  prm: Record<string, number>;
+  isSuperAdmin?: boolean;
 }
 
 export interface AuthState {
   user: User | null;
   activeRole: string | null;
-  roles: string[] | [];
+  roles: { code: string; name: string; type: string }[] | [];
   accessToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User, accessToken: string, refreshToken: string) => Promise<void>;
@@ -21,24 +22,19 @@ export interface AuthState {
   clearAuth: () => Promise<void>;
 }
 
-const defaultAdminRoles: any = {
-  adm: 'admin',
-  man: 'manager',
-  emp: 'employee'
-}
+const DEFAULT_ROLES = [
+  { code: 'adm', name: 'Administrator', type: 'admin' },
+  { code: 'man', name: 'Manager', type: 'manager' },
+  { code: 'emp', name: 'Employee', type: 'employee' }
+];
 
-const mapUserRoles = (userRoles: string[]) => {
+const mapUserRoles = (userRoles: { code: string; name: string; type: string }[]) => {
   if (!userRoles) return [];
-  if (userRoles.includes('sup')) {
-    return ['admin', 'employee', 'manager'];
+  const isSuperAdmin = userRoles.some(r => r.code === 'sup');
+  if (isSuperAdmin) {
+    return DEFAULT_ROLES;
   }
-  const mappedRoles = userRoles.map((role) => {
-    if (defaultAdminRoles[role]) {
-      return defaultAdminRoles[role];
-    }
-    return role;
-  });
-  return mappedRoles;
+  return userRoles;
 }
 
 export const useAuthStore = create<AuthState>((set): AuthState => ({
@@ -49,18 +45,23 @@ export const useAuthStore = create<AuthState>((set): AuthState => ({
     roles: [],
     setAuth: async (user: User, accessToken: string, refreshToken: string) => {
       await storage.setItem('refreshToken', refreshToken);
-      // Set first role as default active role if available    
-      const isSuperAdmin = user?.roles?.includes('sup')
-      const userRoles = mapUserRoles(user?.roles)
-      let activeRole = null
+      
+      const roleCodes = user?.roles?.map(r => r.code) || [];
+      const isSuperAdmin = roleCodes.includes('sup');
+      
+      // Mark user as super admin
+      const userWithSuperAdmin = { ...user, isSuperAdmin };
+      
+      const userRoles = mapUserRoles(user?.roles);
+      let activeRole = null;
       if (isSuperAdmin) {
-        activeRole = 'admin';
+        activeRole = 'adm';
       } else {
-        activeRole = user.roles && user.roles.length > 0 ? user.roles[0] : null;
+        activeRole = roleCodes.length > 0 ? roleCodes[0] : null;
       }
 
-      console.log('auth data', { user, accessToken, isAuthenticated: true, activeRole, roles: userRoles })
-      set({ user, accessToken, isAuthenticated: true, activeRole, roles: userRoles });
+      console.log('auth data', { user: userWithSuperAdmin, accessToken, isAuthenticated: true, activeRole, roles: userRoles })
+      set({ user: userWithSuperAdmin, accessToken, isAuthenticated: true, activeRole, roles: userRoles });
     },
     updateAccessToken: async (accessToken: string , refreshToken: string) => {
       await storage.setItem('refreshToken', refreshToken);

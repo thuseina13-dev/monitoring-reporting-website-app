@@ -6,14 +6,17 @@ import { useRouter, usePathname } from 'expo-router';
 import * as Icons from '@tamagui/lucide-icons';
 
 export function BottomNav() {
-  const { activeRole } = useAuthStore() as any; // Cast to any temporarily if TS is being stubborn
+  const { activeRole, roles } = useAuthStore() as any;
   const router = useRouter();
   const pathname = usePathname();
 
-  // Get current role bit based on activeRole string
+  // Get current role bit based on activeRole code's type
+  const currentRole = roles?.find((r: any) => r.code === activeRole);
+  const roleType = currentRole?.type;
+
   let currentRoleBit = ROLE_BIT.EMPLOYEE;
-  if (activeRole === 'admin' || activeRole === 'super_admin') currentRoleBit = ROLE_BIT.ADMIN;
-  if (activeRole === 'manager') currentRoleBit = ROLE_BIT.MANAGER;
+  if (roleType === 'admin' || roleType === 'super_admin') currentRoleBit = ROLE_BIT.ADMIN;
+  if (roleType === 'manager') currentRoleBit = ROLE_BIT.MANAGER;
 
   const accessibleMenus = MENU_ITEMS.filter((m: MenuItem) => (m.requiredRoleValue & currentRoleBit) === currentRoleBit).slice(0, 3);
 
