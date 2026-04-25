@@ -2,7 +2,7 @@ import { Elysia } from 'elysia';
 import { db } from '../../db';
 import { users, sessions, roles, userRoles } from '../../db/schema';
 import { createAuditLog } from '../../utils/auditLogger';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, isNull } from 'drizzle-orm';
 import { AppError } from '../../utils/AppError';
 import { sendSuccess } from '../../utils/response';
 import { loginDocs, meDocs, logoutDocs, refreshTokenDocs } from './docs';
@@ -71,7 +71,7 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
     async ({ body, jwtAccess, jwtRefresh, getAuthData }) => {
       const { email, password } = body;
 
-      const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      const [user] = await db.select().from(users).where(and(eq(users.email, email), isNull(users.deletedAt), eq(users.isActive, true))).limit(1);
       if (!user) throw new AppError(401, 'Email atau password salah.');
 
       const isPasswordValid = await Bun.password.verify(password, user.password);
@@ -165,7 +165,7 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
 
       if (!session) throw new AppError(401, 'Sesi tidak ditemukan atau sudah logout.');
 
-      const [user] = await db.select().from(users).where(eq(users.id, payload.sub as string)).limit(1);
+      const [user] = await db.select().from(users).where(and(eq(users.id, payload.sub as string), isNull(users.deletedAt), eq(users.isActive, true))).limit(1);
       if (!user) throw new AppError(404, 'User tidak ditemukan.');
 
       const { prm, roles: userRolesData } = await getAuthData(user.id);
@@ -206,8 +206,11 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
 
       const token = authHeader.split(' ')[1];
       const payload = await jwtAccess.verify(token);
-
       if (!payload) throw new AppError(401, 'Sesi tidak valid.');
+
+      // Pengecekan ke database untuk memastikan user masih ada dan aktif
+      const [user] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, payload.sub as string), isNull(users.deletedAt), eq(users.isActive, true))).limit(1);
+      if (!user) throw new AppError(401, 'Sesi tidak valid atau pengguna sudah dinonaktifkan.');
 
       // Pengecekan manual exp
       const currentTime = Math.floor(Date.now() / 1000);

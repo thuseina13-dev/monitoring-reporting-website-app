@@ -208,19 +208,37 @@ export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' 
       const [existing] = await db.select({ id: companyProfiles.id }).from(companyProfiles).where(and(eq(companyProfiles.id, params.id), isNull(companyProfiles.deletedAt))).limit(1);
       if (!existing) throw new AppError(404, 'Profil perusahaan tidak ditemukan');
 
+      // Cek apakah ada user yang masih menggunakan profil perusahaan ini
+      const [userCount] = await db
+        .select({ count: count() })
+        .from(users)
+        .where(and(
+          eq(users.companyProfileId, params.id),
+          isNull(users.deletedAt)
+        ));
+
+      const isUsed = Number(userCount.count) > 0;
+
       await db.transaction(async (tx) => {
-        await tx.update(companyProfiles)
-          .set({ deletedAt: new Date(), deletedBy: currentUser.id } as any)
-          .where(eq(companyProfiles.id, params.id));
+        if (isUsed) {
+          // Soft delete jika masih digunakan
+          await tx.update(companyProfiles)
+            .set({ deletedAt: new Date(), deletedBy: currentUser.id } as any)
+            .where(eq(companyProfiles.id, params.id));
+        } else {
+          // Hard delete jika tidak digunakan
+          await tx.delete(companyProfiles)
+            .where(eq(companyProfiles.id, params.id));
+        }
 
         await createAuditLog({
           userId: currentUser.id!,
           type: 'DELETE',
-          description: `Menghapus profil perusahaan ID: ${params.id}`
+          description: `${isUsed ? 'Soft delete' : 'Hard delete'} profil perusahaan ID: ${params.id}`
         }, tx);
       });
 
-      return sendSuccess(null, 'Profil perusahaan berhasil dihapus');
+      return sendSuccess(null, `Profil perusahaan berhasil dihapus (${isUsed ? 'soft' : 'hard'})`);
     },
     {
       ...deleteCompanyProfileDocs,
