@@ -1,8 +1,8 @@
 import { Elysia } from 'elysia';
 import { db } from '../../../db';
-import { users, sessions, roles, userRoles, companyProfiles } from '../../../db/schema';
+import { users, sessions, roles, userRoles } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, inArray, gt, asc, or, ilike } from 'drizzle-orm';
+import { eq, and, count, gt, asc, or, ilike, isNull } from 'drizzle-orm';
 
 import { buildRQBWhere } from '../../../utils/filter';
 
@@ -53,7 +53,8 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
       // ── Filter Logic with buildRQBWhere ───────────────────
       const filterOptions = {
         searchFields: ['fullName', 'email', 'phoneNo', 'address'],
-        exactFields: ['isActive', 'gender', 'companyProfileId']
+        exactFields: ['isActive', 'gender', 'companyProfileId'],
+        customConditions: [isNull(users.deletedAt)]
       };
 
       // ── RQB Query ──────────────────────────────────────────
@@ -142,7 +143,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
       const includeCompany = includes.includes('company');
 
       const user = await db.query.users.findFirst({
-        where: (u, { eq }) => eq(u.id, params.id),
+        where: (u, { eq, and, isNull }) => and(eq(u.id, params.id), isNull(u.deletedAt)),
         with: {
           ...(includeCompany && {
             companyProfile: {
@@ -199,7 +200,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
     async ({ body, set, currentUser }) => {
       const { fullName, email, password, roleIds, companyProfileId } = body;
 
-      const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+      const [existing] = await db.select({ id: users.id }).from(users).where(and(eq(users.email, email), isNull(users.deletedAt))).limit(1);
       if (existing) throw new AppError(400, 'Email sudah terdaftar.');
 
       const hashedPassword = await Bun.password.hash(password);
@@ -245,7 +246,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
   .put(
     '/:id',
     async ({ params, body, currentUser }) => {
-      const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.id, params.id)).limit(1);
+      const [existing] = await db.select({ id: users.id }).from(users).where(and(eq(users.id, params.id), isNull(users.deletedAt))).limit(1);
       if (!existing) throw new AppError(404, 'Pengguna tidak ditemukan.');
 
       const [superAdminLink] = await db
@@ -324,16 +325,17 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
           throw new AppError(403, 'Akun Master Sistem tidak dapat dimodifikasi atau dihapus');
         }
 
-        const [sessionCount] = await tx.select({ count: count() }).from(sessions).where(eq(sessions.userId, params.id));
+        await tx.update(sessions)
+          .set({ isActive: false })
+          .where(eq(sessions.userId, params.id));
 
-        if (Number(sessionCount.count) > 0) {
-          await tx.update(users)
-            .set({ isActive: false, ...({ deletedAt: new Date(), deletedBy: currentUser.id } as any) } as any)
-            .where(eq(users.id, params.id));
-        } else {
-          await tx.delete(userRoles).where(eq(userRoles.userId, params.id));
-          await tx.delete(users).where(eq(users.id, params.id));
-        }
+        await tx.update(users)
+          .set({ 
+            isActive: false, 
+            deletedAt: new Date(), 
+            deletedBy: currentUser.id 
+          } as any)
+          .where(eq(users.id, params.id));
 
         await createAuditLog({
           userId: currentUser.id!,

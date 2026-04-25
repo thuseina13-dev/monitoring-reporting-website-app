@@ -1,5 +1,5 @@
 import { AppError } from '../utils/AppError';
-import { PERMISSION_BIT, PermissionModule } from '../modules/auth/constants/permissions';
+import { PermissionModule } from '../modules/auth/constants/permissions';
 
 /**
  * RBAC Guard Logic

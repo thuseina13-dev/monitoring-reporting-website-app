@@ -2,7 +2,7 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db';
 import { roles, userRoles, users } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, gt, asc, inArray, or, ilike } from 'drizzle-orm';
+import { eq, and, count, gt, asc, inArray, or, ilike, isNull } from 'drizzle-orm';
 
 import { buildRQBWhere } from '../../../utils/filter';
 
@@ -38,10 +38,10 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
       const limit = query.limit ?? 10;
       const offset = query.cursor ? undefined : (page - 1) * limit;
 
-      // ── Filter Options ────────────────────────────────────
       const filterOptions = {
         searchFields: ['name', 'code'],
-        exactFields: ['type', 'code']
+        exactFields: ['type', 'code'],
+        customConditions: [isNull(roles.deletedAt)]
       };
 
       const roleList = await db.query.roles.findMany({
@@ -115,7 +115,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
       const includeUsers = includes.includes('users');
 
       const role = await db.query.roles.findFirst({
-        where: (r, { eq }) => eq(r.id, params.id),
+        where: (r, { eq, and, isNull }) => and(eq(r.id, params.id), isNull(r.deletedAt)),
         with: {
           ...(includeUsers && {
             userRoles: {
@@ -161,7 +161,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
     async ({ body, currentUser, set }) => {
       const { code, name, type, description } = body;
 
-      const [existing] = await db.select({ id: roles.id }).from(roles).where(eq(roles.code, code)).limit(1);
+      const [existing] = await db.select({ id: roles.id }).from(roles).where(and(eq(roles.code, code), isNull(roles.deletedAt))).limit(1);
       if (existing) throw new AppError(400, 'Kode role sudah terdaftar.');
 
       const newRole = await db.transaction(async (tx) => {
@@ -196,7 +196,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   .put(
     '/:id',
     async ({ params, body, currentUser }) => {
-      const [existing] = await db.select().from(roles).where(eq(roles.id, params.id)).limit(1);
+      const [existing] = await db.select().from(roles).where(and(eq(roles.id, params.id), isNull(roles.deletedAt))).limit(1);
       if (!existing) throw new AppError(404, 'Role tidak ditemukan');
 
       // Proteksi super_admin
@@ -252,12 +252,14 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
       }
 
       await db.transaction(async (tx) => {
-        await tx.delete(roles).where(eq(roles.id, params.id));
+        await tx.update(roles)
+          .set({ deletedAt: new Date(), deletedBy: currentUser.id } as any)
+          .where(eq(roles.id, params.id));
 
         await createAuditLog({
           userId: currentUser.id!,
           type: 'DELETE',
-          description: `Menghapus role: ${existing.name}`
+          description: `Menghapus (soft-delete) role: ${existing.name}`
         }, tx);
       });
 
