@@ -12,6 +12,7 @@ import { errorSchema } from './utils/schema';
 import { cors } from '@elysiajs/cors';
 
 import { wsModule } from './modules/ws';
+import { notificationsModule } from './modules/notifications';
 
 const app = new Elysia({
   websocket: {
@@ -47,6 +48,7 @@ const app = new Elysia({
   .use(usersModule)
   .use(rolesModule)
   .use(companyProfileModule)
+  .use(notificationsModule)
   .onStart(async () => {
     const isConnected = await checkConnection();
     if (isConnected) {
