@@ -1,5 +1,5 @@
 import { t } from 'elysia';
-import { successResponse, paginatedResponse, errorResponses } from '../../../utils/schema';
+import { successResponse, paginatedResponse, errorResponses } from '../../utils/schema';
 
 const notificationResponseSchema = t.Object({
   id: t.String(),

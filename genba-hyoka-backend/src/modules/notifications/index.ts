@@ -1,11 +1,11 @@
 import { Elysia } from 'elysia';
-import { db } from '../../../db';
-import { notifications } from '../../../db/schema';
+import { db } from '../../db';
+import { notifications } from '../../db/schema';
 import { eq, and, count, desc, isNull } from 'drizzle-orm';
 
-import { AppError } from '../../../utils/AppError';
-import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
-import { jwtGuard } from '../../../middlewares/jwtGuard';
+import { AppError } from '../../utils/AppError';
+import { sendSuccess, sendSuccessPagination } from '../../utils/response';
+import { jwtGuard } from '../../middlewares/jwtGuard';
 
 import {
   listNotificationsDocs,
