@@ -37,11 +37,16 @@ const app = new Elysia({
       },
       components: {
         securitySchemes: {
-          bearerAuth: {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
+          cookieAuth: {
+            type: 'apiKey',
+            in: 'cookie',
+            name: 'access_token'
           },
+          csrfToken: {
+            type: 'apiKey',
+            in: 'header',
+            name: 'X-CSRF-TOKEN'
+          }
         },
       },
     },

@@ -18,7 +18,7 @@ export const listNotificationsDocs = {
     summary: 'Daftar Notifikasi',
     description: 'Mengambil daftar notifikasi milik user yang sedang login.',
     tags: ['Notifications'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [] }],
   },
   query: t.Object({
     page: t.Optional(t.Numeric({ minimum: 1, default: 1 })),
@@ -36,7 +36,7 @@ export const markAsReadDocs = {
     summary: 'Tandai Notifikasi Dibaca',
     description: 'Mengubah status is_read menjadi true untuk notifikasi tertentu.',
     tags: ['Notifications'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     200: successResponse(t.Object({

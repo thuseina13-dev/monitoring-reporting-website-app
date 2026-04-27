@@ -26,7 +26,7 @@ export const listCompanyProfilesDocs = {
     summary: 'Daftar Company Profile',
     description: 'Get list of company profiles. Use query "include=users" to load associated users with full details (except ID).',
     tags: ['Company Profiles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [] }],
   },
   response: {
     200: paginatedResponse(companyProfileResponseObj),
@@ -50,7 +50,7 @@ export const getCompanyProfileDocs = {
     summary: 'Detail Company Profile',
     description: 'Get company profile by ID. Use query "include=users" to load associated users with full details (except ID).',
     tags: ['Company Profiles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [] }],
   },
   query: t.Object({
     include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
@@ -74,7 +74,7 @@ export const createCompanyProfileDocs = {
     summary: 'Create Company Profile',
     description: 'Create a new company profile',
     tags: ['Company Profiles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     201: successResponse(companyProfileResponseObj),
@@ -95,7 +95,7 @@ export const updateCompanyProfileDocs = {
     summary: 'Update Company Profile',
     description: 'Update a company profile',
     tags: ['Company Profiles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     200: successResponse(companyProfileResponseObj),
@@ -108,7 +108,7 @@ export const deleteCompanyProfileDocs = {
     summary: 'Delete Company Profile',
     description: 'Delete a company profile',
     tags: ['Company Profiles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     200: successResponse(t.Null()),

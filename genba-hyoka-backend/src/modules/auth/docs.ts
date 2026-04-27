@@ -9,7 +9,7 @@ export const meDocs = {
     summary: 'Cek Profil (Token Verify)',
     description: 'Memverifikasi Access Token dan mengembalikan payload user. (Lokal, No DB Query)',
     tags: ['Auth'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [] }],
   },
   response: {
     200: successResponse(t.Object({
@@ -69,7 +69,7 @@ export const logoutDocs = {
     summary: 'User Logout',
     description: 'Menonaktifkan sesi (is_active = false) berdasarkan refreshToken di cookie.',
     tags: ['Auth'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     200: successResponse(t.Object({})),
