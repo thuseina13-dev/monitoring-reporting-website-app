@@ -80,7 +80,7 @@ describe('Roles Module - Unit Test /v1/roles', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/roles', {
         method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();
@@ -93,7 +93,7 @@ describe('Roles Module - Unit Test /v1/roles', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/roles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Cookie: `access_token=${token}` },
         body: JSON.stringify({ 
           code: 'TST', 
           name: 'Test Role', 
@@ -118,7 +118,7 @@ describe('Roles Module - Unit Test /v1/roles', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/roles/role-super', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Cookie: `access_token=${token}` },
         body: JSON.stringify({ name: 'Super Admin Updated' }),
       })
     );
@@ -132,7 +132,7 @@ describe('Roles Module - Unit Test /v1/roles', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/roles/role-super', {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();

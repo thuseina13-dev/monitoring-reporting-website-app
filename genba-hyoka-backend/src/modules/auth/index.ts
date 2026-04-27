@@ -68,7 +68,7 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
   // ── POST /login ─────────────────────────────────────────────
   .post(
     '/login',
-    async ({ body, jwtAccess, jwtRefresh, getAuthData }) => {
+    async ({ body, jwtAccess, jwtRefresh, getAuthData, cookie: { access_token, refresh_token } }) => {
       const { email, password } = body;
 
       const [user] = await db.select().from(users).where(and(eq(users.email, email), isNull(users.deletedAt), eq(users.isActive, true))).limit(1);
@@ -79,12 +79,15 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
 
       const { prm, roles: userRolesData } = await getAuthData(user.id);
 
+      const csrf_token = crypto.randomUUID();
+
       const accessToken = await jwtAccess.sign({ 
         sub: user.id, 
         name: user.fullName, 
         email: user.email,
         prm,
-        roles: userRolesData 
+        roles: userRolesData,
+        csrf_secret: csrf_token
       });
       const refreshToken = await jwtRefresh.sign({ sub: user.id });
 
@@ -109,9 +112,23 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
         description: 'User login berhasil'
       });
 
+      access_token.set({
+        value: accessToken,
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        path: '/'
+      });
+
+      refresh_token.set({
+        value: refreshToken,
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        path: '/'
+      });
+
       return sendSuccess({
-        accessToken,
-        refreshToken,
         user: { 
           id: user.id, 
           fullName: user.fullName, 
@@ -119,6 +136,7 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
           roles: userRolesData,
           prm
         },
+        csrf_token
       }, 'Login berhasil.');
     },
     loginDocs
@@ -127,17 +145,20 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
   // ── POST /logout ────────────────────────────────────────────
   .post(
     '/logout',
-    async ({ body, headers, jwtAccess }) => {
-      const authHeader = headers['authorization'];
-      if (!authHeader) throw new AppError(401, 'Auth header missing');
+    async ({ cookie: { access_token, refresh_token }, jwtAccess }) => {
+      if (!access_token.value) throw new AppError(401, 'Sesi tidak ditemukan');
       
-      const payload = await jwtAccess.verify(authHeader.split(' ')[1]);
+      const payload = await jwtAccess.verify(access_token.value as string);
       if (!payload) throw new AppError(401, 'Sesi tidak valid');
 
-      // Soft Update is_active = false
-      await db.update(sessions)
-        .set({ isActive: false })
-        .where(eq(sessions.token, body.refreshToken));
+      const currentRefreshToken = refresh_token.value;
+
+      if (currentRefreshToken) {
+        // Soft Update is_active = false
+        await db.update(sessions)
+          .set({ isActive: false })
+          .where(eq(sessions.token, currentRefreshToken as string));
+      }
 
       // Audit Log
       await createAuditLog({
@@ -145,6 +166,10 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
         type: 'POST',
         description: 'User logout berhasil'
       });
+
+      // Hapus cookie
+      access_token.remove();
+      refresh_token.remove();
 
       return sendSuccess(null, 'Logout berhasil.');
     },
@@ -154,13 +179,16 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
   // ── POST /refresh-token ──────────────────────────────────────
   .post(
     '/refresh-token',
-    async ({ body, jwtAccess, jwtRefresh, getAuthData }) => {
-      const payload = await jwtRefresh.verify(body.refreshToken);
+    async ({ cookie: { access_token, refresh_token }, jwtAccess, jwtRefresh, getAuthData }) => {
+      const currentRefreshToken = refresh_token.value;
+      if (!currentRefreshToken) throw new AppError(401, 'Refresh Token tidak ditemukan.');
+
+      const payload = await jwtRefresh.verify(currentRefreshToken as string);
       if (!payload) throw new AppError(401, 'Refresh Token tidak valid atau kadaluwarsa.');
 
       const [session] = await db.select()
         .from(sessions)
-        .where(and(eq(sessions.token, body.refreshToken), eq(sessions.isActive, true)))
+        .where(and(eq(sessions.token, currentRefreshToken as string), eq(sessions.isActive, true)))
         .limit(1);
 
       if (!session) throw new AppError(401, 'Sesi tidak ditemukan atau sudah logout.');
@@ -170,12 +198,15 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
 
       const { prm, roles: userRolesData } = await getAuthData(user.id);
       
+      const csrf_token = crypto.randomUUID();
+
       const newAccessToken = await jwtAccess.sign({ 
         sub: user.id, 
         name: user.fullName, 
         email: user.email,
         prm,
-        roles: userRolesData
+        roles: userRolesData,
+        csrf_secret: csrf_token
       });
       const newRefreshToken = await jwtRefresh.sign({ sub: user.id });
 
@@ -192,7 +223,23 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
         description: 'Pembaruan token (Refresh Token) berhasil'
       });
 
-      return sendSuccess({ accessToken: newAccessToken, refreshToken: newRefreshToken }, 'Token berhasil diperbarui.');
+      access_token.set({
+        value: newAccessToken,
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        path: '/'
+      });
+
+      refresh_token.set({
+        value: newRefreshToken,
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        path: '/'
+      });
+
+      return sendSuccess({ csrf_token }, 'Token berhasil diperbarui.');
     },
     refreshTokenDocs
   )
@@ -200,12 +247,10 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
   // ── GET /me ─────────────────────────────────────────────────
   .get(
     '/me',
-    async ({ headers, jwtAccess }) => {
-      const authHeader = headers['authorization'];
-      if (!authHeader?.startsWith('Bearer ')) throw new AppError(401, 'Sesi tidak ditemukan.');
+    async ({ cookie: { access_token }, jwtAccess }) => {
+      if (!access_token.value) throw new AppError(401, 'Sesi tidak ditemukan.');
 
-      const token = authHeader.split(' ')[1];
-      const payload = await jwtAccess.verify(token);
+      const payload = await jwtAccess.verify(access_token.value as string);
       if (!payload) throw new AppError(401, 'Sesi tidak valid.');
 
       // Pengecekan ke database untuk memastikan user masih ada dan aktif

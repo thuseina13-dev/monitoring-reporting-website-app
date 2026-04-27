@@ -14,14 +14,12 @@ export const jwtGuard = (app: Elysia) =>
         secret: process.env.JWT_SECRET!,
       })
     )
-    .derive({ as: 'scoped' }, async ({ headers, jwt }) => {
-      const authHeader = headers['authorization'];
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    .derive({ as: 'scoped' }, async ({ cookie: { access_token }, jwt }) => {
+      if (!access_token.value) {
         throw new AppError(401, 'Sesi tidak ditemukan, silakan login');
       }
 
-      const token = authHeader.split(' ')[1];
-      const payload = await jwt.verify(token);
+      const payload = await jwt.verify(access_token.value as string);
 
       if (!payload) {
         throw new AppError(401, 'Sesi tidak valid atau telah berakhir');

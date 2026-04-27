@@ -44,8 +44,7 @@ export const loginDocs = {
   }),
   response: {
     200: successResponse(t.Object({
-      accessToken: t.String(),
-      refreshToken: t.String(),
+      csrf_token: t.String(),
       user: t.Object({
         id: t.String(),
         fullName: t.String(),
@@ -68,13 +67,10 @@ export const loginDocs = {
 export const logoutDocs = {
   detail: {
     summary: 'User Logout',
-    description: 'Menonaktifkan sesi (is_active = false) berdasarkan refreshToken.',
+    description: 'Menonaktifkan sesi (is_active = false) berdasarkan refreshToken di cookie.',
     tags: ['Auth'],
     security: [{ bearerAuth: [] }],
   },
-  body: t.Object({
-    refreshToken: t.String({ error: 'Refresh Token wajib dikirim.' }),
-  }),
   response: {
     200: successResponse(t.Object({})),
     ...errorResponses([400, 401, 500]),
@@ -87,16 +83,12 @@ export const logoutDocs = {
 export const refreshTokenDocs = {
   detail: {
     summary: 'Pembaruan Token',
-    description: 'Menerbitkan pasangan token baru menggunakan Refresh Token yang masih aktif.',
+    description: 'Menerbitkan pasangan token baru menggunakan Refresh Token dari cookie.',
     tags: ['Auth'],
   },
-  body: t.Object({
-    refreshToken: t.String({ error: 'Refresh Token wajib dikirim.' }),
-  }),
   response: {
     200: successResponse(t.Object({
-      accessToken: t.String(),
-      refreshToken: t.String(),
+      csrf_token: t.String(),
     })),
     ...errorResponses([400, 401, 500]),
   },

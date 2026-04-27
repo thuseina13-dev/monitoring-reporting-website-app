@@ -9,11 +9,11 @@ import { errorHandler } from '../middlewares/errorHandler';
 const testApp = new Elysia()
   .use(errorHandler)
   // Mock jwt payload extraction (biasanya dilakukan jwtGuard)
-  .derive(({ headers }) => {
-    const auth = headers['authorization'];
-    if (auth === 'Bearer sup-token') return { currentUser: { prm: { TAS: 15, USR: 15 }, roles: ['sup'] } };
-    if (auth === 'Bearer man-token') return { currentUser: { prm: { TAS: 15, USR: 1 }, roles: ['man'] } };
-    if (auth === 'Bearer emp-token') return { currentUser: { prm: { TAS: 1, USR: 1 }, roles: ['emp'] } };
+  .derive(({ cookie: { access_token } }) => {
+    const auth = access_token?.value;
+    if (auth === 'sup-token') return { currentUser: { prm: { TAS: 15, USR: 15 }, roles: ['sup'] } };
+    if (auth === 'man-token') return { currentUser: { prm: { TAS: 15, USR: 1 }, roles: ['man'] } };
+    if (auth === 'emp-token') return { currentUser: { prm: { TAS: 1, USR: 1 }, roles: ['emp'] } };
     return { currentUser: null };
   })
   // Route Group: Tasks
@@ -39,7 +39,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
     const roles = ['sup-token', 'man-token', 'emp-token'];
     for (const token of roles) {
       const res = await testApp.handle(
-        new Request('http://localhost/v1/tasks', { headers: { Authorization: `Bearer ${token}` } })
+        new Request('http://localhost/v1/tasks', { headers: { Cookie: `access_token=${token}` } })
       );
       if (res.status !== 200) {
         const err = await res.json();
@@ -55,7 +55,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
     const resSup = await testApp.handle(
       new Request('http://localhost/v1/tasks', { 
         method: 'POST', 
-        headers: { Authorization: 'Bearer sup-token' } 
+        headers: { Cookie: `access_token=sup-token` } 
       })
     );
     expect(resSup.status).toBe(200);
@@ -64,7 +64,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
     const resMan = await testApp.handle(
       new Request('http://localhost/v1/tasks', { 
         method: 'POST', 
-        headers: { Authorization: 'Bearer man-token' } 
+        headers: { Cookie: `access_token=man-token` } 
       })
     );
     expect(resMan.status).toBe(200);
@@ -73,7 +73,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
     const resEmp = await testApp.handle(
       new Request('http://localhost/v1/tasks', { 
         method: 'POST', 
-        headers: { Authorization: 'Bearer emp-token' } 
+        headers: { Cookie: `access_token=emp-token` } 
       })
     );
     expect(resEmp.status).toBe(403);
@@ -84,7 +84,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
     const resMan = await testApp.handle(
       new Request('http://localhost/v1/users', { 
         method: 'POST', 
-        headers: { Authorization: 'Bearer man-token' } 
+        headers: { Cookie: `access_token=man-token` } 
       })
     );
     expect(resMan.status).toBe(403);
@@ -93,7 +93,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
     const resEmp = await testApp.handle(
       new Request('http://localhost/v1/users', { 
         method: 'POST', 
-        headers: { Authorization: 'Bearer emp-token' } 
+        headers: { Cookie: `access_token=emp-token` } 
       })
     );
     expect(resEmp.status).toBe(403);
@@ -102,7 +102,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
     const resSup = await testApp.handle(
       new Request('http://localhost/v1/users', { 
         method: 'POST', 
-        headers: { Authorization: 'Bearer sup-token' } 
+        headers: { Cookie: `access_token=sup-token` } 
       })
     );
     expect(resSup.status).toBe(200);

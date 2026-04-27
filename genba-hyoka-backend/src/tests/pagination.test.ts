@@ -72,7 +72,7 @@ describe('Users Module - Pagination & Search Test', () => {
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/users?page=1&limit=2', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();
@@ -86,7 +86,7 @@ describe('Users Module - Pagination & Search Test', () => {
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/users?search=alice', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();
@@ -98,7 +98,7 @@ describe('Users Module - Pagination & Search Test', () => {
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/users?page=1&cursor=abc', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     expect(response.status).toBe(400);

@@ -70,7 +70,7 @@ describe('Notifications Module - Unit Test', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/notifications', {
         method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();
@@ -85,7 +85,7 @@ describe('Notifications Module - Unit Test', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/notifications/notif-1/read', {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();
