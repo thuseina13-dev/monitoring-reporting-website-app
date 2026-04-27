@@ -95,7 +95,7 @@ describe('Users Module - Unit Test /v1/users', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/users', {
         method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();
@@ -108,7 +108,7 @@ describe('Users Module - Unit Test /v1/users', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Cookie: `access_token=${token}` },
         body: JSON.stringify({ 
             fullName: 'User Baru', 
             email: 'baru@genba.com', 
@@ -127,7 +127,7 @@ describe('Users Module - Unit Test /v1/users', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Cookie: `access_token=${token}` },
         body: JSON.stringify({
           fullName: 'No Role User',
           email: 'norole@test.com',
@@ -148,7 +148,7 @@ describe('Users Module - Unit Test /v1/users', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/users/user-super', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Cookie: `access_token=${token}` },
         body: JSON.stringify({ fullName: 'Update Name' }),
       })
     );
@@ -163,7 +163,7 @@ describe('Users Module - Unit Test /v1/users', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/users/user-super', {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();

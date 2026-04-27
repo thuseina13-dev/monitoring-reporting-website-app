@@ -11,7 +11,7 @@ export const createWsTicketDocs = {
     summary: 'Request WebSocket Handshake Ticket',
     description: 'Menghasilkan tiket satu kali pakai (OTT) untuk upgrade koneksi WebSocket. Tiket berlaku selama 60 detik. Membutuhkan autentikasi JWT.',
     tags: ['WebSocket'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     201: successResponse(wsTicketResponseSchema),

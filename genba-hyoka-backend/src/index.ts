@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { checkConnection } from './db';
 
 import { errorHandler } from './middlewares/errorHandler';
+import { csrfGuard } from './middlewares/csrfGuard';
 import { authModule } from './modules/auth';
 import { usersModule } from './modules/user-management/users';
 import { rolesModule } from './modules/user-management/roles';
@@ -19,7 +20,10 @@ const app = new Elysia({
     idleTimeout: 60, // Sesuai spesifikasi untuk pembersihan memori
   }
 })
-  .use(cors())
+  .use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+  }))
   .model({
     ErrorResponse: errorSchema,
   })
@@ -33,16 +37,22 @@ const app = new Elysia({
       },
       components: {
         securitySchemes: {
-          bearerAuth: {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
+          cookieAuth: {
+            type: 'apiKey',
+            in: 'cookie',
+            name: 'access_token'
           },
+          csrfToken: {
+            type: 'apiKey',
+            in: 'header',
+            name: 'X-CSRF-TOKEN'
+          }
         },
       },
     },
   }))
   .use(errorHandler)
+  .use(csrfGuard)
   .use(authModule)
   .use(wsModule)
   .use(usersModule)

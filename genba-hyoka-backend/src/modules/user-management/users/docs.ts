@@ -36,7 +36,7 @@ export const listUsersDocs = {
     summary: 'Daftar Semua Pengguna',
     description: 'Mengambil daftar pengguna dengan paginasi. Gunakan query "include" untuk memuat relasi (roles, company). Membutuhkan izin USR (Read).',
     tags: ['Users'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [] }],
   },
   response: {
     200: paginatedResponse(userResponseSchema),
@@ -64,7 +64,7 @@ export const getUserDocs = {
     summary: 'Detail Pengguna',
     description: 'Mengambil detail pengguna. Gunakan query "include" (roles, company) untuk memuat data relasi.',
     tags: ['Users'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [] }],
   },
   query: t.Object({
     include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (comma separated). Contoh: roles,company' })),
@@ -81,7 +81,7 @@ export const registerUserDocs = {
     summary: 'Tambah Pengguna Baru',
     description: 'Menambahkan pengguna baru beserta penugasan role dan profil perusahaan. Membutuhkan izin USR (Create).',
     tags: ['Users'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     201: successResponse(userResponseSchema),
@@ -102,7 +102,7 @@ export const updateUserDocs = {
     summary: 'Update Profil Pengguna',
     description: 'Memperbarui data profil dan menyinkronkan daftar role serta perusahaan. Membutuhkan izin USR (Update).',
     tags: ['Users'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     200: successResponse(userResponseSchema),
@@ -127,7 +127,7 @@ export const deleteUserDocs = {
     summary: 'Hapus / Nonaktifkan Pengguna (Smart Delete)',
     description: 'Logic: Soft-delete jika pernah login (ada session), Hard-delete jika belum pernah login.',
     tags: ['Users'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     200: successResponse(t.Null()),

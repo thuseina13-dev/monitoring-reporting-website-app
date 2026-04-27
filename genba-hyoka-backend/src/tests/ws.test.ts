@@ -52,7 +52,7 @@ describe('WebSocket Module - Unit Test /v1/ws/ticket', () => {
     const response = await app.handle(
       new Request('http://localhost/v1/ws/ticket', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();

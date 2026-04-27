@@ -25,7 +25,7 @@ export const listRolesDocs = {
     summary: 'Daftar Semua Role',
     description: 'Mengambil daftar role. Gunakan query "include=users" untuk memuat daftar pengguna terkait dengan detail lengkap (kecuali ID).',
     tags: ['Roles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [] }],
   },
   response: {
     200: paginatedResponse(roleResponseObj),
@@ -49,7 +49,7 @@ export const getRoleDocs = {
     summary: 'Detail Role',
     description: 'Mengambil detail role. Gunakan query "include=users" untuk memuat daftar pengguna terkait dengan detail lengkap (kecuali ID).',
     tags: ['Roles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [] }],
   },
   query: t.Object({
     include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
@@ -66,7 +66,7 @@ export const createRoleDocs = {
     summary: 'Tambah Role Baru',
     description: 'Membuat role baru dalam sistem. Membutuhkan izin ROL (Create).',
     tags: ['Roles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     201: successResponse(roleResponseObj),
@@ -86,7 +86,7 @@ export const updateRoleDocs = {
     summary: 'Update Detail Role',
     description: 'Memperbarui data dasar role. Membutuhkan izin ROL (Update).',
     tags: ['Roles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     200: successResponse(roleResponseObj),
@@ -107,7 +107,7 @@ export const deleteRoleDocs = {
     summary: 'Hapus Role (Smart Delete)',
     description: 'Logic: Mencegah penghapusan Super Admin atau role yang sedang digunakan oleh user.',
     tags: ['Roles'],
-    security: [{ bearerAuth: [] }],
+    security: [{ cookieAuth: [], csrfToken: [] }],
   },
   response: {
     200: successResponse(t.Null()),
