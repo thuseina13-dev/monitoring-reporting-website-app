@@ -66,8 +66,8 @@ export default function LoginScreen() {
   const loginMutation = useMutation({
     mutationFn: authService.login,
     onSuccess: async (data) => {
-      const { user, accessToken, refreshToken } = data.data;
-      await setAuth(user, accessToken, refreshToken);
+      const { user, csrf_token } = data.data;
+      setAuth(user, csrf_token);
 
       toast.show('Login Berhasil', {
         message: `Selamat datang, ${user.fullName}`,
