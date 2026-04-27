@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
-import { storage } from '../../utils/storage';
 import { useAuthStore } from '../../store/authStore';
 
 export const useCheckAuth = (initialLoading: boolean = false) => {
@@ -10,30 +9,27 @@ export const useCheckAuth = (initialLoading: boolean = false) => {
   const checkAuth = useCallback(async () => {
     setIsChecking(true);
     try {
-      const refreshToken = await storage.getItem('refreshToken');
-      if (refreshToken) {
-        // Attempt to refresh token
-        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/auth/refresh-token`, {
-          refreshToken
+      // Attempt to refresh token using HttpOnly cookie
+      const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/auth/refresh-token`, {}, {
+        withCredentials: true
+      });
+      
+      if (response.data.success) {
+        const { csrf_token } = response.data.data;
+        
+        // Get user profile using HttpOnly cookie
+        const profileResponse = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/auth/me`, {
+          withCredentials: true
         });
         
-        if (response.data.success) {
-          const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-          
-          // Get user profile
-          const profileResponse = await axios.get(`${process.env.EXPO_PUBLIC_API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-          });
-          
-          if (profileResponse.data.success) {
-            await setAuth(profileResponse.data.data, accessToken, newRefreshToken);
-            return true;
-          }
+        if (profileResponse.data.success) {
+          setAuth(profileResponse.data.data, csrf_token);
+          return true;
         }
       }
     } catch (error) {
       console.log('Failed to restore session:', error);
-      await clearAuth();
+      clearAuth();
     } finally {
       setIsChecking(false);
     }

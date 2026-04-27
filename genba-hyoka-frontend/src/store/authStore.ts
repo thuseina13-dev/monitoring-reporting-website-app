@@ -14,10 +14,10 @@ export interface AuthState {
   user: User | null;
   activeRole: string | null;
   roles: { code: string; name: string; type: string }[] | [];
-  accessToken: string | null;
+  csrfToken: string | null;
   isAuthenticated: boolean;
-  setAuth: (user: User, accessToken: string, refreshToken: string) => Promise<void>;
-  updateAccessToken: (accessToken: string, refreshToken: string) => Promise<void>;
+  setAuth: (user: User, csrfToken: string) => void;
+  updateCsrfToken: (csrfToken: string) => void;
   setActiveRole: (role: string) => void;
   clearAuth: () => Promise<void>;
 }
@@ -40,12 +40,10 @@ const mapUserRoles = (userRoles: { code: string; name: string; type: string }[])
 export const useAuthStore = create<AuthState>((set): AuthState => ({
     user: null,
     activeRole: null,
-    accessToken: null,
+    csrfToken: null,
     isAuthenticated: false,
     roles: [],
-    setAuth: async (user: User, accessToken: string, refreshToken: string) => {
-      await storage.setItem('refreshToken', refreshToken);
-      
+    setAuth: (user: User, csrfToken: string) => {
       const roleCodes = user?.roles?.map(r => r.code) || [];
       const isSuperAdmin = roleCodes.includes('sup');
       
@@ -60,20 +58,19 @@ export const useAuthStore = create<AuthState>((set): AuthState => ({
         activeRole = roleCodes.length > 0 ? roleCodes[0] : null;
       }
 
-      console.log('auth data', { user: userWithSuperAdmin, accessToken, isAuthenticated: true, activeRole, roles: userRoles })
-      set({ user: userWithSuperAdmin, accessToken, isAuthenticated: true, activeRole, roles: userRoles });
+      console.log('auth data', { user: userWithSuperAdmin, isAuthenticated: true, activeRole, roles: userRoles, csrfToken })
+      set({ user: userWithSuperAdmin, csrfToken, isAuthenticated: true, activeRole, roles: userRoles });
     },
-    updateAccessToken: async (accessToken: string , refreshToken: string) => {
-      await storage.setItem('refreshToken', refreshToken);
-      set({ accessToken });
+    updateCsrfToken: (csrfToken: string) => {
+      set({ csrfToken });
     },
     setActiveRole: async (role: string) => {
       await storage.setItem('activeRole', role);
       set({ activeRole: role });
     },
     clearAuth: async () => {
-      await storage.removeItem('refreshToken');
-      set({ user: null, accessToken: null, isAuthenticated: false, activeRole: null, roles: [] });
+      await storage.removeItem('activeRole');
+      set({ user: null, csrfToken: null, isAuthenticated: false, activeRole: null, roles: [] });
     },
   })
 );

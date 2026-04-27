@@ -1,5 +1,4 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import * as SecureStore from 'expo-secure-store';
 import { useAuthStore } from '../../store/authStore';
 
 const axiosClient = axios.create({
@@ -7,17 +6,18 @@ const axiosClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: any) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token);
+      prom.resolve();
     }
   });
 
@@ -27,10 +27,14 @@ const processQueue = (error: any, token: string | null = null) => {
 // ── Request Interceptor ───────────────────────────────────────
 axiosClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = useAuthStore.getState().accessToken;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const csrfToken = useAuthStore.getState().csrfToken;
+    const method = config.method?.toUpperCase();
+    
+    // Inject CSRF token for mutation requests
+    if (csrfToken && method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      config.headers['X-CSRF-TOKEN'] = csrfToken;
     }
+    
     return config;
   },
   (error) => {
@@ -50,8 +54,13 @@ axiosClient.interceptors.response.use(
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+          .then(() => {
+            // Update CSRF header on retry if necessary
+            const csrfToken = useAuthStore.getState().csrfToken;
+            const method = originalRequest.method?.toUpperCase();
+            if (csrfToken && method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+              originalRequest.headers['X-CSRF-TOKEN'] = csrfToken;
+            }
             return axiosClient(originalRequest);
           })
           .catch((err) => {
@@ -63,29 +72,27 @@ axiosClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await SecureStore.getItemAsync('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        // Hit refresh-token endpoint
-        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/auth/refresh-token`, {
-          refreshToken,
+        // Hit refresh-token endpoint, cookies sent automatically
+        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/auth/refresh-token`, {}, {
+          withCredentials: true,
         });
 
-        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+        const { csrf_token } = response.data.data;
         
         // Update store
-        await useAuthStore.getState().updateAccessToken(accessToken, newRefreshToken);
+        useAuthStore.getState().updateCsrfToken(csrf_token);
 
-        processQueue(null, accessToken);
+        processQueue(null);
         
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        const method = originalRequest.method?.toUpperCase();
+        if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+          originalRequest.headers['X-CSRF-TOKEN'] = csrf_token;
+        }
+
         return axiosClient(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
+        processQueue(refreshError);
         await useAuthStore.getState().clearAuth();
-        // Force redirect to login might be needed here, or handled by a listener on isAuthenticated
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

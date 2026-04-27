@@ -7,8 +7,8 @@ export const authService = {
     return response.data;
   },
 
-  logout: async (refreshToken: string) => {
-    const response = await axiosClient.post('/auth/logout', { refreshToken });
+  logout: async () => {
+    const response = await axiosClient.post('/auth/logout');
     return response.data;
   },
 
@@ -16,4 +16,9 @@ export const authService = {
     const response = await axiosClient.get('/auth/me');
     return response.data;
   },
+
+  refresh: async () => {
+    const response = await axiosClient.post('/auth/refresh-token');
+    return response.data;
+  }
 };

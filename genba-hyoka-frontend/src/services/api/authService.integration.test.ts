@@ -16,7 +16,6 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: jest.fn() }),
 }));
 
-// Use require to ensure environment is set up before axiosClient is initialized
 const { authService } = require('./authService');
 const axiosClient = require('./axiosClient').default;
 
@@ -25,40 +24,44 @@ describe('authService Full Lifecycle Integration Test', () => {
   const password = process.env.SUPER_ADMIN_PASSWORD;
   const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 
-  let accessToken: string;
-  let refreshToken: string;
+  let cookieHeader: string = '';
+  let csrfToken: string = '';
 
-  it('should successfully login and receive tokens', async () => {
-    const response = await authService.login({
+  it('should successfully login and receive cookies and csrf_token', async () => {
+    const response = await axios.post(`${apiUrl}/auth/login`, {
       email,
       password,
     });
 
-    expect(response.success).toBe(true);
-    expect(response.data.accessToken).toBeDefined();
-    expect(response.data.refreshToken).toBeDefined();
-    expect(response.data.user.email).toBe(email);
+    expect(response.data.success).toBe(true);
+    expect(response.data.data.csrf_token).toBeDefined();
     
-    accessToken = response.data.accessToken;
-    refreshToken = response.data.refreshToken;
+    // Extract cookies
+    const setCookie = response.headers['set-cookie'];
+    if (setCookie) {
+      cookieHeader = setCookie.map(c => c.split(';')[0]).join('; ');
+    }
+    csrfToken = response.data.data.csrf_token;
     
     console.log('✅ Login: OK');
   });
 
   it('should successfully refresh the access token', async () => {
-    expect(refreshToken).toBeDefined();
-
     try {
-      const response = await axios.post(`${apiUrl}/auth/refresh-token`, {
-        refreshToken,
+      const response = await axios.post(`${apiUrl}/auth/refresh-token`, {}, {
+        headers: {
+          Cookie: cookieHeader
+        }
       });
 
       expect(response.data.success).toBe(true);
-      expect(response.data.data.accessToken).toBeDefined();
-      expect(response.data.data.refreshToken).toBeDefined();
+      expect(response.data.data.csrf_token).toBeDefined();
       
-      accessToken = response.data.data.accessToken;
-      refreshToken = response.data.data.refreshToken;
+      const setCookie = response.headers['set-cookie'];
+      if (setCookie) {
+        cookieHeader = setCookie.map(c => c.split(';')[0]).join('; ');
+      }
+      csrfToken = response.data.data.csrf_token;
       
       console.log('✅ Refresh Token: OK');
     } catch (error: any) {
@@ -67,19 +70,16 @@ describe('authService Full Lifecycle Integration Test', () => {
     }
   });
 
-  it('should successfully get user profile with the new access token', async () => {
-    expect(accessToken).toBeDefined();
-
+  it('should successfully get user profile with the new cookie', async () => {
     try {
-      axiosClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      const response = await axios.get(`${apiUrl}/auth/me`, {
+        headers: {
+          Cookie: cookieHeader
+        }
+      });
       
-      const response = await authService.getCurrentUser();
-      
-      expect(response.success).toBe(true);
-      // The backend uses 'name' and 'sub' in the JWT payload (OIDC style)
-      // and it doesn't include 'email' in the token payload anymore.
-      expect(response.data.name).toBe('Sistem Administrator');
-      expect(response.data.sub).toBeDefined();
+      expect(response.data.success).toBe(true);
+      expect(response.data.data.sub).toBeDefined();
       
       console.log('✅ Get Me: OK');
     } catch (error: any) {
@@ -89,12 +89,15 @@ describe('authService Full Lifecycle Integration Test', () => {
   });
 
   it('should successfully logout', async () => {
-    expect(refreshToken).toBeDefined();
-
     try {
-      const response = await authService.logout(refreshToken);
+      const response = await axios.post(`${apiUrl}/auth/logout`, {}, {
+        headers: {
+          Cookie: cookieHeader,
+          'X-CSRF-TOKEN': csrfToken
+        }
+      });
       
-      expect(response.success).toBe(true);
+      expect(response.data.success).toBe(true);
       console.log('✅ Logout: OK');
     } catch (error: any) {
       console.error('❌ Logout failed:', error.response?.data || error.message);

@@ -9,11 +9,7 @@ export function useLogout() {
 
     const handleLogout = async () => {
         try {
-            const refreshToken = await storage.getItem('refreshToken');
-            if (refreshToken) {
-                await authService.logout(refreshToken);
-            }
-
+            await authService.logout();
             const msg = `Sampai jumpa, ${user?.fullName}`;
             await clearAuth();
             router.replace({ pathname: '/(auth)/login', params: { logout: msg } });
