@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, YStack, XStack, ScrollView, Card, Button } from 'tamagui';
-import { useAuthStore } from '../../../store/authStore';
+import { Text, YStack, XStack, ScrollView, Card, Button } from 'tamagui';
 import { MENU_ITEMS, ROLE_BIT } from '../../../config/menu';
 import { useRouter } from 'expo-router';
 
@@ -10,11 +9,10 @@ import { useLogout } from '@/hooks/auth/useLogout';
 import { MainDashboardMenu } from '../../../components/dashboard/MainDashboardMenu';
 
 export default function AdminDashboard() {
-  const { user } = useAuthStore();
   const router = useRouter();
   const adminMenus = MENU_ITEMS.filter(item => (item.requiredRoleValue & ROLE_BIT.ADMIN) !== 0);
   const handleActionLogout = useLogout();
-  
+
   const getIcon = (title: string) => {
     switch (title) {
       case 'ROLE': return <BadgeCheck color={COLORS.info} size={44} />;
@@ -26,12 +24,22 @@ export default function AdminDashboard() {
 
   return (
     <ScrollView flex={1} backgroundColor={COLORS.pageBackground}>
-      <YStack padding="$4" gap="$5" minHeight="100%">
-        
+      <YStack padding="$4" gap="$5" minHeight="100%"
+        transition="quick"       // Gunakan konfigurasi animasi bawaan tamagui
+        enterStyle={{
+          opacity: 0,           // Saat layar baru dimuat, mulai dengan transparan (menghilang)
+          scale: 0.95,          // dan sedikit mengecil
+          y: 10,                // dan agak ke bawah
+        }}
+        opacity={1}             // Target akhir (normal)
+        scale={1}               // Target akhir (normal)
+        y={0}                   // Target akhir (normal)
+      >
+
         {/* Section Menu Utama */}
-        <MainDashboardMenu 
-          items={adminMenus} 
-          getIcon={getIcon} 
+        <MainDashboardMenu
+          items={adminMenus}
+          getIcon={getIcon}
           onLogout={handleActionLogout}
           onItemPress={(href) => router.push(href as any)}
         />

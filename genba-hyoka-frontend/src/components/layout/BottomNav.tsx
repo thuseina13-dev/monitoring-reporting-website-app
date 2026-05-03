@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { MENU_ITEMS, ROLE_BIT, MenuItem } from '../../config/menu';
 import { useRouter, usePathname } from 'expo-router';
 import * as Icons from '@tamagui/lucide-icons';
+import { COLORS } from '@/constants/theme';
 
 export function BottomNav() {
   const { activeRole, roles } = useAuthStore() as any;
@@ -25,19 +26,19 @@ export function BottomNav() {
       {accessibleMenus.map((menu: MenuItem, idx: number) => {
         const IconComponent = (Icons as any)[menu.icon];
         const isActive = pathname.startsWith(menu.href);
-        const color = isActive ? '#10B981' : '$gray10';
+        const color = isActive ? COLORS.primary : '$gray10';
 
         return (
-          <YStack 
-            key={idx} 
-            alignItems="center" 
+          <YStack
+            key={idx}
+            alignItems="center"
             justifyContent="center"
             flex={1}
             height="100%"
             borderTopWidth={3}
-            borderTopColor={isActive ? '#10B981' : 'transparent'}
+            borderTopColor={isActive ? COLORS.primary : 'transparent'}
             //@ts-ignore
-            cursor="pointer" 
+            cursor="pointer"
             onPress={() => router.push(menu.href as any)}
           >
             {IconComponent && <IconComponent size={24} color={color} />}

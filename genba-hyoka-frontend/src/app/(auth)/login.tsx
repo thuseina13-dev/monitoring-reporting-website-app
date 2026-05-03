@@ -21,7 +21,7 @@ import { loginSchema, LoginFormInputs } from '../../utils/validations';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '../../services/api/authService';
 import { useAuthStore } from '../../store/authStore';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Lock, Mail, Eye, EyeOff } from '@tamagui/lucide-icons';
 import { useToastController } from '@tamagui/toast';
 import { COLORS } from '../../constants/theme';
@@ -93,6 +93,7 @@ export default function LoginScreen() {
 
   return (
     <YStack f={1} bc={COLORS.pageBackground} jc="center" ai="center" p="$4">
+      <Stack.Screen options={{ title: 'Halaman Login', headerShown: false }} /> 
       <Card
         elevation={5}
         p="$8"

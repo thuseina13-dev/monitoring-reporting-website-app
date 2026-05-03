@@ -31,7 +31,6 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <ToastProvider swipeDirection="horizontal" duration={1500}>
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)/login" options={{ title: 'Login' }} />
             <Stack.Screen name="index" options={{ title: 'Home' }} />
           </Stack>
           <CustomToast />

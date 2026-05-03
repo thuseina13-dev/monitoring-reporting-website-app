@@ -1,5 +1,3 @@
-import { ComponentProps } from 'react';
-
 // Bitmasks untuk Role
 export const ROLE_BIT = {
   SUPER_ADMIN: 1 << 0, // 1
