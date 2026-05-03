@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { useCheckAuth } from '@/hooks/auth/useCheckAuth';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { COLORS } from '@/constants/theme';
 
 function WebSocketManager() {
   useWebSocket();
@@ -40,7 +41,7 @@ export default function DashboardLayout() {
   }
 
   return (
-    <YStack flex={1} backgroundColor="#F8FAFC">
+    <YStack flex={1} backgroundColor={COLORS.pageBackground}>
       <WebSocketManager />
       <Header />
       

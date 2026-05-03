@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, YStack, XStack, ScrollView, Card, Button } from 'tamagui';
+import { Text, YStack, XStack, ScrollView, Card, Button } from 'tamagui';
 import { useAuthStore } from '../../../store/authStore';
 import { MENU_ITEMS, ROLE_BIT } from '../../../config/menu';
 import { useRouter } from 'expo-router';
@@ -27,12 +27,22 @@ export default function EmployeeDashboard() {
 
   return (
     <ScrollView flex={1} backgroundColor={COLORS.pageBackground}>
-      <YStack padding="$4" gap="$5" minHeight="100%">
-        
+      <YStack padding="$4" gap="$5" minHeight="100%"
+        transition="quick"       // Gunakan konfigurasi animasi bawaan tamagui
+        enterStyle={{
+          opacity: 0,           // Saat layar baru dimuat, mulai dengan transparan (menghilang)
+          scale: 0.95,          // dan sedikit mengecil
+          y: 10,                // dan agak ke bawah
+        }}
+        opacity={1}             // Target akhir (normal)
+        scale={1}               // Target akhir (normal)
+        y={0}                   // Target akhir (normal)
+      >
+
         {/* Section Menu Utama */}
-        <MainDashboardMenu 
-          items={employeeMenus} 
-          getIcon={getIcon} 
+        <MainDashboardMenu
+          items={employeeMenus}
+          getIcon={getIcon}
           onLogout={handleActionLogout}
           onItemPress={(href) => router.push(href as any)}
         />
@@ -40,7 +50,7 @@ export default function EmployeeDashboard() {
         {/* Welcome & Stats Section */}
         <YStack gap="$4">
           <YStack>
-            <Text fontSize="$6" fontWeight="800" color={COLORS.textDark}>Halo, {user?.fullName.split(' ')[0]}!</Text>
+            <Text fontSize="$6" fontWeight="800" color={COLORS.textDark}>Halo, {user?.fullName?.split(' ')[0] || 'User'}!</Text>
             <Text fontSize="$3" color={COLORS.textMuted}>Sudahkah Anda mengecek tugas hari ini?</Text>
           </YStack>
 
