@@ -26,7 +26,7 @@ const userResponseSchema = t.Object({
   gender: t.Union([t.String(), t.Null()]),
   isActive: t.Boolean(),
   companyProfileId: t.Union([t.String(), t.Null()]),
-  companyProfile: t.Optional(t.Union([companyProfileNested, t.Null()])),
+  companyPartner: t.Optional(t.Union([companyProfileNested, t.Null()])),
   roles: t.Optional(t.Array(roleNested)),
 });
 
@@ -34,7 +34,7 @@ const userResponseSchema = t.Object({
 export const listUsersDocs = {
   detail: {
     summary: 'Daftar Semua Pengguna',
-    description: 'Mengambil daftar pengguna dengan paginasi. Gunakan query "include" untuk memuat relasi (roles, company). Membutuhkan izin USR (Read).',
+    description: 'Mengambil daftar pengguna dengan paginasi. Gunakan query "include" untuk memuat relasi (roles, company_partner). Membutuhkan izin USR (Read).',
     tags: ['Users'],
     security: [{ cookieAuth: [] }],
   },
@@ -54,7 +54,7 @@ export const listUsersDocs = {
     address: t.Optional(t.String({ description: 'Filter alamat (Partial match)' })),
     companyProfileId: t.Optional(t.String({ format: 'uuid' })),
     cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor.' })),
-    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (comma separated). Contoh: roles,company' })),
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (comma separated). Contoh: roles,company_partner' })),
   }),
 };
 
@@ -62,12 +62,12 @@ export const listUsersDocs = {
 export const getUserDocs = {
   detail: {
     summary: 'Detail Pengguna',
-    description: 'Mengambil detail pengguna. Gunakan query "include" (roles, company) untuk memuat data relasi.',
+    description: 'Mengambil detail pengguna. Gunakan query "include" (roles, company_partner) untuk memuat data relasi.',
     tags: ['Users'],
     security: [{ cookieAuth: [] }],
   },
   query: t.Object({
-    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (comma separated). Contoh: roles,company' })),
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (comma separated). Contoh: roles,company_partner' })),
   }),
   response: {
     200: successResponse(userResponseSchema),
