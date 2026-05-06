@@ -1,11 +1,11 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { userService } from '../../services/api/userService';
+import { companyService } from '../../services/api/companyService';
 
-export const useGetUsers = (params?: any) => {
+export const useGetCompanies = (params?: any) => {
   return useInfiniteQuery({
-    queryKey: ['users', params],
+    queryKey: ['company-profiles', params],
     queryFn: ({ pageParam }) => 
-      userService.getUsersCursor({ 
+      companyService.getCompaniesCursor({ 
         ...params, 
         cursor: pageParam ?? ''
       }),

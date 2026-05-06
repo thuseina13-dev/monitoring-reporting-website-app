@@ -7,13 +7,14 @@ import { eq, and, count, gt, asc, isNull, inArray, or, ilike } from 'drizzle-orm
 import { buildRQBWhere } from '../../../utils/filter';
 
 import { AppError } from '../../../utils/AppError';
-import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
+import { sendSuccess, sendSuccessPagination, buildOffsetMeta, buildCursorMeta } from '../../../utils/response';
 import { jwtGuard } from '../../../middlewares/jwtGuard';
 import { rbac } from '../../../middlewares/rbacGuard';
 import { PERMISSION_BIT } from '../../auth/constants/permissions';
 
 import {
   listCompanyProfilesDocs,
+  listCompanyProfilesCursorDocs,
   getCompanyProfileDocs,
   createCompanyProfileDocs,
   updateCompanyProfileDocs,
@@ -27,16 +28,12 @@ export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' 
   .get(
     '/',
     async ({ query }) => {
-      if (query.page && query.cursor) {
-        throw new AppError(400, 'Paginasi page dan cursor tidak dapat digunakan secara bersamaan.');
-      }
-
       const includes = query.include ? query.include.split(',') : [];
       const includeUsers = includes.includes('users');
 
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
-      const offset = query.cursor ? undefined : (page - 1) * limit;
+      const offset = (page - 1) * limit;
 
       // ── Filter Options ────────────────────────────────────
       const filterOptions = {
@@ -66,29 +63,56 @@ export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' 
         }
       });
 
-      const [totalCount] = await db
-        .select({ count: count() })
-        .from(companyProfiles)
-        .where(buildRQBWhere(companyProfiles, { and, or, eq, ilike, gt }, query, filterOptions));
-
-      const total = Number(totalCount.count);
-      const meta: any = { 
-        limit,
-        ...(query.cursor ? { 
-          next_cursor: profileList.length === limit ? profileList[profileList.length - 1].id : null,
-          has_more: profileList.length === limit
-        } : {
-          total,
-          current_page: page,
-          last_page: Math.ceil(total / limit),
-          has_more: page < Math.ceil(total / limit)
-        })
-      };
+      const meta = await buildOffsetMeta(profileList, limit, page, async () => {
+        const [totalCount] = await db
+          .select({ count: count() })
+          .from(companyProfiles)
+          .where(buildRQBWhere(companyProfiles, { and, or, eq, ilike, gt }, query, filterOptions));
+        return Number(totalCount.count);
+      });
 
       return sendSuccessPagination(profileList, meta, 'Data berhasil diambil');
     },
     {
       ...listCompanyProfilesDocs,
+      beforeHandle: rbac('CPY', PERMISSION_BIT.READ)
+    }
+  )
+
+  // ── GET /company-profiles/cursor (Infinite Scroll) ──────────
+  .get(
+    '/cursor',
+    async ({ query }) => {
+      const includes = query.include ? query.include.split(',') : [];
+      const includeUsers = includes.includes('users');
+
+      const limit = query.limit ?? 10;
+      const offset = undefined; // Selalu undefined untuk kursor
+
+      const filterOptions = {
+        searchFields: ['name', 'email', 'phoneNo', 'address'],
+        customConditions: [isNull(companyProfiles.deletedAt)]
+      };
+
+      const profileList = await db.query.companyProfiles.findMany({
+        where: (fields, ops) => buildRQBWhere(fields, ops, query, filterOptions),
+        orderBy: [asc(companyProfiles.id)],
+        limit: limit,
+        offset: offset,
+        with: {
+          ...(includeUsers && {
+            users: {
+              columns: { id: true, fullName: true, email: true, isActive: true }
+            }
+          })
+        }
+      });
+
+      const meta = buildCursorMeta(profileList, limit);
+      return sendSuccessPagination(profileList, meta, 'Data berhasil diambil');
+    },
+    {
+      ...listCompanyProfilesCursorDocs,
       beforeHandle: rbac('CPY', PERMISSION_BIT.READ)
     }
   )

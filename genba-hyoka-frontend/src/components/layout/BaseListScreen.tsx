@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, ScrollView, XStack, YStack, Input, Spinner, Text } from 'tamagui';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, XStack, YStack, Input, Spinner, Text, Button } from 'tamagui';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, AlertCircle } from '@tamagui/lucide-icons';
+import { Search, AlertCircle, Plus } from '@tamagui/lucide-icons';
 import { COLORS } from '../../constants/theme';
 import ListHeader from './ListHeader';
 import FloatingActionButton from './FloatingActionButton';
@@ -45,6 +45,26 @@ function BaseListScreen<T>({
   hasNextPage,
   isFetchingNextPage,
 }: BaseListScreenProps<T>) {
+  const [localSearch, setLocalSearch] = useState(searchValue);
+
+  // Debounce logic: Update parent search value after 500ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      onSearchChange(localSearch);
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [localSearch]);
+
+  // Sync internal state if external searchValue changes (e.g. cleared from parent)
+  useEffect(() => {
+    if (searchValue !== localSearch) {
+      setLocalSearch(searchValue);
+    }
+  }, [searchValue]);
+
   const handleScroll = (e: any) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
     const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
@@ -77,8 +97,8 @@ function BaseListScreen<T>({
               backgroundColor="transparent"
               placeholder={searchPlaceholder}
               placeholderTextColor={COLORS.textSecondary as any}
-              value={searchValue}
-              onChangeText={onSearchChange}
+              value={localSearch}
+              onChangeText={setLocalSearch}
               height={45}
               focusStyle={{ borderWidth: 0, outlineWidth: 0 }}
             />
@@ -92,45 +112,40 @@ function BaseListScreen<T>({
           onScroll={handleScroll}
           scrollEventThrottle={16}
         >
-          {isLoading ? (
+          {isLoading && data.length === 0 ? (
             <YStack padding="$10" alignItems="center" justifyContent="center" gap="$4">
               <Spinner size="large" color={COLORS.primary} />
               <Text color={COLORS.textSecondary}>Memuat data...</Text>
             </YStack>
           ) : isError ? (
             <YStack padding="$10" alignItems="center" justifyContent="center" gap="$4">
-              <AlertCircle size={40} color={COLORS.warning} />
-              <Text color={COLORS.textMain} fontWeight="bold">Gagal memuat data</Text>
-              <Text color={COLORS.textSecondary} textAlign="center">
-                {errorMessage}
-              </Text>
-              <View 
-                onPress={onRetry} 
+              <AlertCircle size={48} color="#E74C3C" />
+              <Text color={COLORS.textMain} textAlign="center">{errorMessage}</Text>
+              <Button 
                 backgroundColor={COLORS.primary} 
-                paddingHorizontal="$4" 
-                paddingVertical="$2" 
-                borderRadius="$2"
-                marginTop="$2"
+                onPress={onRetry}
+                pressStyle={{ opacity: 0.8 }}
               >
-                <Text color="white" fontWeight="600">Coba Lagi</Text>
-              </View>
+                <Text color="white" fontWeight="700">Coba Lagi</Text>
+              </Button>
             </YStack>
           ) : isEmpty ? (
-            <YStack padding="$10" alignItems="center" justifyContent="center">
-              <Text color={COLORS.textSecondary}>{emptyMessage}</Text>
+            <YStack padding="$10" alignItems="center" justifyContent="center" gap="$2">
+              <Text color={COLORS.textSecondary} textAlign="center">{emptyMessage}</Text>
             </YStack>
           ) : (
-            <YStack gap="$5">
+            <YStack gap="$3">
               {data.map((item, index) => renderItem(item, index))}
+              
               {isFetchingNextPage && (
                 <YStack padding="$4" alignItems="center">
-                  <Spinner size="small" color={COLORS.primary} />
+                  <Spinner color={COLORS.primary} />
                 </YStack>
               )}
             </YStack>
           )}
         </ScrollView>
-
+        
         {onAdd && <FloatingActionButton onPress={onAdd} />}
       </SafeAreaView>
     </View>

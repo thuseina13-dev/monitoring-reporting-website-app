@@ -86,6 +86,22 @@ describe('Roles Module - Unit Test /v1/roles', () => {
     const body = await response.json();
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
+    expect(body.meta.total).toBeDefined(); // Offset-based
+  });
+
+  it('Harus mengembalikan daftar role via CURSOR (200)', async () => {
+    const token = await getTestToken();
+    const response = await app.handle(
+      new Request('http://localhost/v1/roles/cursor', {
+        method: 'GET',
+        headers: { Cookie: `access_token=${token}` },
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.meta.next_cursor).toBeDefined();
+    expect(body.meta.total).toBeUndefined(); // Cursor-based
   });
 
   it('Harus berhasil buat role baru (201)', async () => {

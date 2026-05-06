@@ -5,9 +5,9 @@ export const useGetRoles = (params?: any) => {
   return useInfiniteQuery({
     queryKey: ['roles', params],
     queryFn: ({ pageParam }) => 
-      roleService.getRoles({ 
+      roleService.getRolesCursor({ 
         ...params, 
-        cursor: pageParam 
+        cursor: pageParam ?? ''
       }),
     initialPageParam: undefined,
     getNextPageParam: (lastPage: any) => lastPage.meta.next_cursor || undefined,

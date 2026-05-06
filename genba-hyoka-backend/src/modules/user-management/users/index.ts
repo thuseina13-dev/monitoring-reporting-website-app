@@ -7,13 +7,14 @@ import { eq, and, count, gt, asc, or, ilike, isNull } from 'drizzle-orm';
 import { buildRQBWhere } from '../../../utils/filter';
 
 import { AppError } from '../../../utils/AppError';
-import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
+import { sendSuccess, sendSuccessPagination, buildOffsetMeta, buildCursorMeta } from '../../../utils/response';
 import { jwtGuard } from '../../../middlewares/jwtGuard';
 import { rbac } from '../../../middlewares/rbacGuard';
 import { PERMISSION_BIT } from '../../auth/constants/permissions';
 
 import {
   listUsersDocs,
+  listUsersCursorDocs,
   getUserDocs,
   registerUserDocs,
   updateUserDocs,
@@ -38,17 +39,13 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
   .get(
     '/',
     async ({ query }) => {
-      if (query.page && query.cursor) {
-        throw new AppError(400, 'Paginasi page dan cursor tidak dapat digunakan secara bersamaan.');
-      }
-
       const includes = query.include ? query.include.split(',') : [];
       const includeRoles = includes.includes('roles');
       const includeCompany = includes.includes('company') || includes.includes('company_partner');
 
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
-      const offset = query.cursor ? undefined : (page - 1) * limit;
+      const offset = (page - 1) * limit;
 
       // ── Filter Logic with buildRQBWhere ───────────────────
       const filterOptions = {
@@ -109,30 +106,74 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         };
       });
 
-      // ── Total Count for Meta ───────────────────────────────
-      const [totalCount] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(buildRQBWhere(users, { and, or, eq, ilike, gt }, query, filterOptions));
-
-      const total = Number(totalCount.count);
-      const meta: any = { 
-        limit,
-        ...(query.cursor ? { 
-          next_cursor: userList.length === limit ? userList[userList.length - 1].id : null,
-          has_more: userList.length === limit
-        } : {
-          total,
-          current_page: page,
-          last_page: Math.ceil(total / limit),
-          has_more: page < Math.ceil(total / limit)
-        })
-      };
+      const meta = await buildOffsetMeta(userList, limit, page, async () => {
+        const [totalCount] = await db
+          .select({ count: count() })
+          .from(users)
+          .where(buildRQBWhere(users, { and, or, eq, ilike, gt }, query, filterOptions));
+        return Number(totalCount.count);
+      });
 
       return sendSuccessPagination(finalData, meta, 'Data berhasil diambil');
     },
     {
       ...listUsersDocs,
+      beforeHandle: rbac('USR', PERMISSION_BIT.READ)
+    }
+  )
+
+  // ── GET /users/cursor (Infinite Scroll) ─────────────────────────
+  .get(
+    '/cursor',
+    async ({ query }) => {
+      const includes = query.include ? query.include.split(',') : [];
+      const includeRoles = includes.includes('roles');
+      const includeCompany = includes.includes('company') || includes.includes('company_partner');
+
+      const limit = query.limit ?? 10;
+      const offset = undefined; // Selalu undefined untuk mode kursor
+
+      // ── Filter Logic with buildRQBWhere ───────────────────
+      const filterOptions = {
+        searchFields: ['fullName', 'email', 'phoneNo', 'address'],
+        exactFields: ['isActive', 'gender', 'companyProfileId'],
+        customConditions: [isNull(users.deletedAt)]
+      };
+
+      // ── RQB Query ──────────────────────────────────────────
+      const userList = await db.query.users.findMany({
+        where: (fields, ops) => buildRQBWhere(fields, ops, query, filterOptions),
+        orderBy: [asc(users.id)],
+        limit: limit,
+        offset: offset,
+        with: {
+          ...(includeCompany && {
+            companyProfile: {
+              columns: { id: true, name: true, desc: true, address: true, logo: true, phoneNo: true, email: true }
+            }
+          }),
+          ...(includeRoles && {
+            userRoles: {
+              with: { role: { columns: { id: false, code: true, name: true, type: true, description: true } } }
+            }
+          })
+        }
+      });
+
+      const finalData = userList.map(u => {
+        const { userRoles, companyProfile, ...userData } = u as any;
+        return {
+          ...userData,
+          ...(includeCompany && { companyPartner: companyProfile }),
+          ...(includeRoles && { roles: userRoles.map((ur: any) => ur.role) })
+        };
+      });
+
+      const meta = buildCursorMeta(userList, limit);
+      return sendSuccessPagination(finalData, meta, 'Data berhasil diambil');
+    },
+    {
+      ...listUsersCursorDocs,
       beforeHandle: rbac('USR', PERMISSION_BIT.READ)
     }
   )

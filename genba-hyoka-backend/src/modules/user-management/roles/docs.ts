@@ -38,7 +38,29 @@ export const listRolesDocs = {
     code: t.Optional(t.String()),
     name: t.Optional(t.String()),
     type: t.Optional(t.String()),
-    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor.' })),
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
+  }),
+};
+
+// ── GET /roles/cursor ───────────────────────────────────────
+export const listRolesCursorDocs = {
+  detail: {
+    summary: 'Daftar Semua Role (Cursor/Infinite Scroll)',
+    description: 'Mengambil daftar role dengan paginasi berbasis kursor. Lebih performan untuk infinite scroll. Membutuhkan izin ROL (Read).',
+    tags: ['Roles'],
+    security: [{ cookieAuth: [] }],
+  },
+  response: {
+    200: paginatedResponse(roleResponseObj),
+    ...errorResponses([401, 403, 500]),
+  },
+  query: t.Object({
+    limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100, default: 10 })),
+    search: t.Optional(t.String({ description: 'Cari nama/kode (Case-insensitive)' })),
+    code: t.Optional(t.String()),
+    name: t.Optional(t.String()),
+    type: t.Optional(t.String()),
+    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor. Kirim string kosong atau jangan kirim untuk halaman pertama.' })),
     include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
   }),
 };

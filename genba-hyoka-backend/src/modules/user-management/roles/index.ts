@@ -7,13 +7,14 @@ import { eq, and, count, gt, asc, inArray, or, ilike, isNull } from 'drizzle-orm
 import { buildRQBWhere } from '../../../utils/filter';
 
 import { AppError } from '../../../utils/AppError';
-import { sendSuccess, sendSuccessPagination } from '../../../utils/response';
+import { sendSuccess, sendSuccessPagination, buildOffsetMeta, buildCursorMeta } from '../../../utils/response';
 import { jwtGuard } from '../../../middlewares/jwtGuard';
 import { rbac } from '../../../middlewares/rbacGuard';
 import { PERMISSION_BIT } from '../../auth/constants/permissions';
 
 import {
   listRolesDocs,
+  listRolesCursorDocs,
   getRoleDocs,
   createRoleDocs,
   updateRoleDocs,
@@ -27,16 +28,12 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   .get(
     '/',
     async ({ query }) => {
-      if (query.page && query.cursor) {
-        throw new AppError(400, 'Paginasi page dan cursor tidak dapat digunakan secara bersamaan.');
-      }
-
       const includes = query.include ? query.include.split(',') : [];
       const includeUsers = includes.includes('users');
 
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
-      const offset = query.cursor ? undefined : (page - 1) * limit;
+      const offset = (page - 1) * limit;
 
       const filterOptions = {
         searchFields: ['name', 'code'],
@@ -80,29 +77,69 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
         };
       });
 
-      const [totalCount] = await db
-        .select({ count: count() })
-        .from(roles)
-        .where(buildRQBWhere(roles, { and, or, eq, ilike, gt }, query, filterOptions));
-
-      const total = Number(totalCount.count);
-      const meta: any = { 
-        limit,
-        ...(query.cursor ? { 
-          next_cursor: roleList.length === limit ? roleList[roleList.length - 1].id : null,
-          has_more: roleList.length === limit
-        } : {
-          total,
-          current_page: page,
-          last_page: Math.ceil(total / limit),
-          has_more: page < Math.ceil(total / limit)
-        })
-      };
+      const meta = await buildOffsetMeta(roleList, limit, page, async () => {
+        const [totalCount] = await db
+          .select({ count: count() })
+          .from(roles)
+          .where(buildRQBWhere(roles, { and, or, eq, ilike, gt }, query, filterOptions));
+        return Number(totalCount.count);
+      });
 
       return sendSuccessPagination(finalData, meta, 'Data berhasil diambil');
     },
     {
       ...listRolesDocs,
+      beforeHandle: rbac('ROL', PERMISSION_BIT.READ)
+    }
+  )
+
+  // ── GET /roles/cursor (Infinite Scroll) ─────────────────────────
+  .get(
+    '/cursor',
+    async ({ query }) => {
+      const includes = query.include ? query.include.split(',') : [];
+      const includeUsers = includes.includes('users');
+
+      const limit = query.limit ?? 10;
+      const offset = undefined;
+
+      const filterOptions = {
+        searchFields: ['name', 'code', 'description'],
+        exactFields: ['type'],
+        customConditions: [isNull(roles.deletedAt)]
+      };
+
+      const roleList = await db.query.roles.findMany({
+        where: (fields, ops) => buildRQBWhere(fields, ops, query, filterOptions),
+        orderBy: [asc(roles.id)],
+        limit: limit,
+        offset: offset,
+        with: {
+          ...(includeUsers && {
+            userRoles: {
+              with: {
+                user: {
+                  columns: { id: false, fullName: true, email: true, phoneNo: true, address: true, gender: true, isActive: true }
+                }
+              }
+            }
+          })
+        }
+      });
+
+      const finalData = roleList.map(role => {
+        const { userRoles, ...roleData } = role as any;
+        return {
+          ...roleData,
+          ...(includeUsers && { users: userRoles.map((ur: any) => ur.user) })
+        };
+      });
+
+      const meta = buildCursorMeta(roleList, limit);
+      return sendSuccessPagination(finalData, meta, 'Data berhasil diambil');
+    },
+    {
+      ...listRolesCursorDocs,
       beforeHandle: rbac('ROL', PERMISSION_BIT.READ)
     }
   )
