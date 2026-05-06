@@ -12,4 +12,9 @@ export const userService = {
     const response = await axiosClient.get('/users', { params });
     return response.data;
   },
+
+  getUsersCursor: async (params: GetUsersParams = {}) => {
+    const response = await axiosClient.get('/users/cursor', { params });
+    return response.data;
+  },
 };

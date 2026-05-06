@@ -53,7 +53,33 @@ export const listUsersDocs = {
     gender: t.Optional(t.String({ description: 'Filter gender (male/female)' })),
     address: t.Optional(t.String({ description: 'Filter alamat (Partial match)' })),
     companyProfileId: t.Optional(t.String({ format: 'uuid' })),
-    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor.' })),
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (comma separated). Contoh: roles,company_partner' })),
+  }),
+};
+
+// ── GET /users/cursor ───────────────────────────────────────
+export const listUsersCursorDocs = {
+  detail: {
+    summary: 'Daftar Pengguna (Cursor/Infinite Scroll)',
+    description: 'Mengambil daftar pengguna dengan paginasi berbasis kursor (ID). Lebih performan karena melewati proses penghitungan total data. Membutuhkan izin USR (Read).',
+    tags: ['Users'],
+    security: [{ cookieAuth: [] }],
+  },
+  response: {
+    200: paginatedResponse(userResponseSchema),
+    ...errorResponses([401, 403, 500]),
+  },
+  query: t.Object({
+    limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100, default: 10 })),
+    search: t.Optional(t.String({ description: 'Cari nama/email (Case-insensitive)' })),
+    fullName: t.Optional(t.String({ description: 'Filter berdasarkan nama lengkap' })),
+    email: t.Optional(t.String({ description: 'Filter berdasarkan email' })),
+    isActive: t.Optional(t.String({ description: 'Filter status true/false' })),
+    phoneNo: t.Optional(t.String({ description: 'Filter nomor telepon' })),
+    gender: t.Optional(t.String({ description: 'Filter gender (male/female)' })),
+    address: t.Optional(t.String({ description: 'Filter alamat (Partial match)' })),
+    companyProfileId: t.Optional(t.String({ format: 'uuid' })),
+    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor. Kirim string kosong atau jangan kirim untuk halaman pertama.' })),
     include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (comma separated). Contoh: roles,company_partner' })),
   }),
 };

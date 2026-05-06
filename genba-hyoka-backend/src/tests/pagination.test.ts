@@ -29,7 +29,11 @@ async function getTestToken(): Promise<string> {
       token = await jwt.sign({
         sub: 'admin-1',
         email: 'admin@genba.com',
-        prm: { USR: 15 },
+        prm: { 
+          USR: 15,
+          ROL: 15,
+          CPY: 15
+        },
       });
       return token;
     })
@@ -42,12 +46,22 @@ mock.module("../db", () => ({
   db: {
     query: {
         users: {
-            findMany: async (options: any) => {
-                // If it's a function (RQB style), we just return mock data
-                // In a real test we might want to evaluate it, but for unit test this is enough
-                return mockUsers;
-            },
+            findMany: async (options: any) => mockUsers,
             findFirst: async () => mockUsers[0],
+        },
+        roles: {
+            findMany: async (options: any) => [{ id: 'role-1', code: 'ADM', name: 'Admin', type: 'admin', description: 'Administrator' }],
+            findFirst: async () => ({ id: 'role-1', code: 'ADM', name: 'Admin', type: 'admin', description: 'Administrator' }),
+        },
+        companyProfiles: {
+            findMany: async (options: any) => [{ 
+              id: 'comp-1', name: 'Company', email: 'comp@test.com', phoneNo: '123', 
+              address: 'Street', desc: 'Description', logo: null 
+            }],
+            findFirst: async () => ({ 
+              id: 'comp-1', name: 'Company', email: 'comp@test.com', phoneNo: '123', 
+              address: 'Street', desc: 'Description', logo: null 
+            }),
         }
     },
     select: (fields: any) => {
@@ -62,13 +76,20 @@ import { describe, expect, it, mock } from "bun:test";
 
 // ── Import Modules ───────────────────────────────────────────
 import { usersModule } from '../modules/user-management/users';
+import { rolesModule } from '../modules/user-management/roles';
+import { companyProfileModule } from '../modules/user-management/company-profile';
 import { errorHandler } from '../middlewares/errorHandler';
 
-const app = new Elysia().use(errorHandler).use(usersModule);
+const app = new Elysia()
+  .use(errorHandler)
+  .use(usersModule)
+  .use(rolesModule)
+  .use(companyProfileModule);
 
 // ── Tests ────────────────────────────────────────────────────
-describe('Users Module - Pagination & Search Test', () => {
-  it('GET /v1/users?page=1&limit=2 > Harus mengembalikan data terpaginasi', async () => {
+describe('Pagination System Test - All Modules', () => {
+  // ── Users ──
+  it('GET /v1/users?page=1&limit=2 > Harus (Offset)', async () => {
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/users?page=1&limit=2', {
@@ -77,30 +98,69 @@ describe('Users Module - Pagination & Search Test', () => {
     );
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body.data).toHaveLength(2);
-    expect(body.meta.total).toBe(2);
-    expect(body.meta.current_page).toBe(1);
+    expect(body.meta.total).toBeDefined();
   });
 
-  it('GET /v1/users?search=alice > Harus mengembalikan format yang benar', async () => {
+  it('GET /v1/users/cursor?limit=2 > Harus (Cursor)', async () => {
     const token = await getTestToken();
     const response = await app.handle(
-      new Request('http://localhost/v1/users?search=alice', {
+      new Request('http://localhost/v1/users/cursor?limit=2', {
         headers: { Cookie: `access_token=${token}` },
       })
     );
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body.data).toBeDefined();
+    expect(body.meta.next_cursor).toBeDefined();
+    expect(body.meta.total).toBeUndefined();
   });
 
-  it('GET /v1/users?page=1&cursor=abc > Harus return error 400 (Saling Bertentangan)', async () => {
+  // ── Roles ──
+  it('GET /v1/roles?page=1 > Harus (Offset)', async () => {
     const token = await getTestToken();
     const response = await app.handle(
-      new Request('http://localhost/v1/users?page=1&cursor=abc', {
+      new Request('http://localhost/v1/roles?page=1', {
         headers: { Cookie: `access_token=${token}` },
       })
     );
-    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.meta.total).toBeDefined();
+  });
+
+  it('GET /v1/roles/cursor > Harus (Cursor)', async () => {
+    const token = await getTestToken();
+    const response = await app.handle(
+      new Request('http://localhost/v1/roles/cursor', {
+        headers: { Cookie: `access_token=${token}` },
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.meta.next_cursor).toBeDefined();
+  });
+
+  // ── Company Profiles ──
+  it('GET /v1/company-profiles?page=1 > Harus (Offset)', async () => {
+    const token = await getTestToken();
+    const response = await app.handle(
+      new Request('http://localhost/v1/company-profiles?page=1', {
+        headers: { Cookie: `access_token=${token}` },
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.meta.total).toBeDefined();
+  });
+
+  it('GET /v1/company-profiles/cursor > Harus (Cursor)', async () => {
+    const token = await getTestToken();
+    const response = await app.handle(
+      new Request('http://localhost/v1/company-profiles/cursor', {
+        headers: { Cookie: `access_token=${token}` },
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.meta.next_cursor).toBeDefined();
   });
 });

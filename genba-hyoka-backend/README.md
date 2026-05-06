@@ -38,22 +38,24 @@ Open http://localhost:3000/ with your browser to see the result.
 Proyek ini menggunakan standar respon dan sistem filtering terpusat untuk mempermudah integrasi dengan frontend.
 
 ### 1. Paginasi (Pagination)
-Sistem mendukung dua model paginasi yang **saling bertentangan** (tidak bisa digunakan bersamaan):
+Sistem menggunakan arsitektur pemisahan *endpoint* (Separate API Pattern) untuk melayani dua jenis paginasi dengan tingkat performa yang berbeda. Skema metadata setiap respon telah dibuat sepenuhnya *Type-Safe*.
 
 #### A. Traditional (Offset-based)
-Cocok untuk navigasi nomor halaman (Halaman 1, 2, 3).
+Cocok untuk tampilan **Data Table** dengan penomoran halaman yang jelas (Halaman 1, 2, 3).
+- **Endpoint:** `GET /v1/users`
 - **Params:** `page` (Halaman), `limit`.
 - **Response Meta:** Berisi `total`, `current_page`, `last_page`, dan `has_more`.
-- **Contoh:** `GET /v1/users?page=1&limit=10`
+- **Performa:** Mengeksekusi *query* `COUNT(*)` ke database secara penuh.
 
 #### B. Modern (Cursor-based)
-Cocok untuk *Infinite Scroll*. Memberikan performa lebih stabil untuk data besar.
+Cocok untuk tampilan **Infinite Scroll** atau **Dropdown Feed**. Sangat ringan dan sangat cepat.
+- **Endpoint:** `GET /v1/users/cursor`
 - **Params:** `cursor` (ID data terakhir), `limit`.
-- **Response Meta:** Berisi `next_cursor` (ID untuk pemanggilan berikutnya) dan `has_more`.
-- **Contoh:** `GET /v1/users?cursor=uuid-user-terakhir&limit=10`
+- **Response Meta:** Hanya berisi `next_cursor` (ID untuk pemanggilan berikutnya) dan `has_more`.
+- **Performa:** **Tidak mengeksekusi** *query* `COUNT(*)`. Mengurangi beban database secara drastis.
 
-> [!IMPORTANT]
-> Mengirimkan parameter `page` dan `cursor` secara bersamaan akan menghasilkan **Error 400 Bad Request**.
+> [!TIP]
+> Jika Anda membangun fitur *Infinite Scroll* di Frontend, gunakan *hook* yang mengarah ke `/cursor` (misalnya fungsi `getUsersCursor()` di *service* API Frontend).
 
 ---
 

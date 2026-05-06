@@ -1,4 +1,5 @@
-import { SQL, eq, ilike, or, and, getTableColumns } from 'drizzle-orm';
+import { SQL, eq, ilike, or, and, getTableColumns, aliasedTable } from 'drizzle-orm';
+import { getTableConfig } from 'drizzle-orm/pg-core';
 
 /**
  * [LEGACY] Membangun filter Drizzle Core (db.select)
@@ -88,25 +89,33 @@ export const buildRQBWhere = (
     customConditions?: any[];
   } = {}
 ) => {
+  // Jika fields adalah objek tabel Drizzle (schema), ambil kolomnya secara langsung
+  // Kita gunakan aliasedTable untuk memaksa Drizzle menggunakan nama tabel fisik sebagai alias
+  let actualFields = fields;
+  if (fields && typeof fields === 'object' && '_' in fields) {
+    const config = getTableConfig(fields as any);
+    actualFields = getTableColumns(aliasedTable(fields as any, config.name));
+  }
+
   const { and, or, eq, ilike, gt } = ops;
-  const conditions: any[] = options.customConditions || [];
+  const conditions: any[] = options.customConditions ? [...options.customConditions] : [];
 
   // 1. Global Search
   if (query.search && options.searchFields) {
     const searchConditions = options.searchFields
-      .filter(key => fields[key])
-      .map(key => ilike(fields[key], `%${query.search}%`));
+      .filter(key => actualFields[key])
+      .map(key => ilike(actualFields[key], `%${query.search}%`));
     if (searchConditions.length > 0) conditions.push(or(...searchConditions));
   }
 
-  // 2. Auto-mapping berdasarkan Query Params
+  // 2. Auto-mapping berdasarkan Query Params (Frontend mengikuti Schema)
   for (const key in query) {
     // Lewati parameter internal paginasi/include
     if (['page', 'limit', 'cursor', 'include', 'search'].includes(key)) continue;
     if (options.excludeFields?.includes(key)) continue;
 
     const value = query[key];
-    const column = fields[key];
+    const column = actualFields[key];
     
     if (!column || value === undefined || value === '') continue;
 
@@ -120,8 +129,8 @@ export const buildRQBWhere = (
   }
 
   // 3. Pagination Cursor
-  if (query.cursor && fields.id) {
-    conditions.push(gt(fields.id, query.cursor));
+  if (query.cursor && actualFields.id) {
+    conditions.push(gt(actualFields.id, query.cursor));
   }
 
   return conditions.length > 0 ? and(...conditions) : undefined;

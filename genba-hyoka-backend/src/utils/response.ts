@@ -38,3 +38,39 @@ export const sendSuccessPagination = (
     meta,
   };
 };
+
+/**
+ * Pagination Meta Builder: Offset-Based
+ * Digunakan untuk tampilan tabel standar dengan nomor halaman.
+ */
+export const buildOffsetMeta = async (
+  list: any[],
+  limit: number,
+  page: number,
+  executeCount: () => Promise<number>
+) => {
+  const total = await executeCount();
+  return {
+    limit,
+    total,
+    current_page: page,
+    last_page: Math.ceil(total / limit),
+    has_more: page < Math.ceil(total / limit)
+  };
+};
+
+/**
+ * Pagination Meta Builder: Cursor-Based
+ * Digunakan untuk Infinite Scroll / Dropdown feed.
+ * Tidak menjalankan count query.
+ */
+export const buildCursorMeta = (
+  list: any[],
+  limit: number
+) => {
+  return {
+    limit,
+    next_cursor: list.length === limit ? list[list.length - 1].id : null,
+    has_more: list.length === limit
+  };
+};

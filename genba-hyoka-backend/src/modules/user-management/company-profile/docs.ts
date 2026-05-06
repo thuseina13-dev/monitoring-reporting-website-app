@@ -40,7 +40,30 @@ export const listCompanyProfilesDocs = {
     email: t.Optional(t.String()),
     phoneNo: t.Optional(t.String()),
     address: t.Optional(t.String()),
-    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor.' })),
+    include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
+  }),
+};
+
+// ── GET /company-profiles/cursor ──────────────────────────
+export const listCompanyProfilesCursorDocs = {
+  detail: {
+    summary: 'Daftar Company Profile (Cursor/Infinite Scroll)',
+    description: 'Get list of company profiles using cursor pagination. More performant for infinite scroll. Membutuhkan izin CPY (Read).',
+    tags: ['Company Profiles'],
+    security: [{ cookieAuth: [] }],
+  },
+  response: {
+    200: paginatedResponse(companyProfileResponseObj),
+    ...errorResponses([400, 401, 403, 500]),
+  },
+  query: t.Object({
+    limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100, default: 10 })),
+    search: t.Optional(t.String({ description: 'Cari nama/email (Case-insensitive)' })),
+    name: t.Optional(t.String()),
+    email: t.Optional(t.String()),
+    phoneNo: t.Optional(t.String()),
+    address: t.Optional(t.String()),
+    cursor: t.Optional(t.String({ description: 'ID terakhir untuk paginasi cursor. Kirim string kosong atau jangan kirim untuk halaman pertama.' })),
     include: t.Optional(t.String({ description: 'Relasi yang ingin dimuat (contoh: users)' })),
   }),
 };

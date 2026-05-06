@@ -6,6 +6,11 @@ export const roleService = {
     return response.data;
   },
 
+  getRolesCursor: async (params?: any) => {
+    const response = await axiosClient.get('/roles/cursor', { params });
+    return response.data;
+  },
+
   getRoleById: async (id: string) => {
     const response = await axiosClient.get(`/roles/${id}`);
     return response.data;
