@@ -1,11 +1,11 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { userService } from '../../services/api/userService';
+import { roleService } from '../../services/api/roleService';
 
-export const useGetUsers = (params?: any) => {
+export const useGetRoles = (params?: any) => {
   return useInfiniteQuery({
-    queryKey: ['users', params],
+    queryKey: ['roles', params],
     queryFn: ({ pageParam }) => 
-      userService.getUsers({ 
+      roleService.getRoles({ 
         ...params, 
         cursor: pageParam 
       }),
