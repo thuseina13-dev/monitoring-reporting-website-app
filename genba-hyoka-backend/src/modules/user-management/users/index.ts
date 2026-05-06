@@ -44,7 +44,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
 
       const includes = query.include ? query.include.split(',') : [];
       const includeRoles = includes.includes('roles');
-      const includeCompany = includes.includes('company');
+      const includeCompany = includes.includes('company') || includes.includes('company_partner');
 
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
@@ -67,7 +67,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
           ...(includeCompany && {
             companyProfile: {
               columns: {
-                id: false,
+                id: true,
                 name: true,
                 desc: true,
                 address: true,
@@ -95,11 +95,14 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         }
       });
 
-      // Transform many-to-many result from userRoles to flat roles array
+      // Transform many-to-many result and rename companyProfile to companyPartner
       const finalData = userList.map(u => {
-        const { userRoles, ...userData } = u as any;
+        const { userRoles, companyProfile, ...userData } = u as any;
         return {
           ...userData,
+          ...(includeCompany && {
+            companyPartner: companyProfile
+          }),
           ...(includeRoles && {
             roles: userRoles.map((ur: any) => ur.role)
           })
@@ -140,7 +143,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
     async ({ params, query }) => {
       const includes = query.include ? query.include.split(',') : [];
       const includeRoles = includes.includes('roles');
-      const includeCompany = includes.includes('company');
+      const includeCompany = includes.includes('company') || includes.includes('company_partner');
 
       const user = await db.query.users.findFirst({
         where: (u, { eq, and, isNull }) => and(eq(u.id, params.id), isNull(u.deletedAt)),
@@ -148,7 +151,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
           ...(includeCompany && {
             companyProfile: {
               columns: {
-                id: false,
+                id: true,
                 name: true,
                 desc: true,
                 address: true,
@@ -178,9 +181,12 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
 
       if (!user) throw new AppError(404, 'Pengguna tidak ditemukan.');
 
-      const { userRoles: ur, ...userData } = user as any;
+      const { userRoles: ur, companyProfile, ...userData } = user as any;
       const finalData = {
         ...userData,
+        ...(includeCompany && {
+          companyPartner: companyProfile
+        }),
         ...(includeRoles && {
           roles: ur.map((item: any) => item.role)
         })

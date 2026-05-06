@@ -16,12 +16,15 @@ export const COLORS = {
   inputBackground: '#E7E8E9',
   
   // Text Colors
+  textMain: '#2C3E50',
   textDark: '#3D4A3E',
   textMuted: '#4E6073',
+  textSecondary: '#95A5A6',
   textLight: '#FFFFFF',
   
   // Borders
   borderColor: '#BBCBBB26',
+  borderLight: '#E5E7EB',
 
   // Tactical Gradients (Arah 135deg / Top-Left to Bottom-Right)
   gradients: {
