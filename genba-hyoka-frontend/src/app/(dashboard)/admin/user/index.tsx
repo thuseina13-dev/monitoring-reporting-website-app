@@ -6,17 +6,27 @@ import { useGetUsers } from '../../../../hooks/users/useGetUsers';
 const UserListPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch data dari API dengan include company_partner
-  const { data, isLoading, isError, refetch } = useGetUsers({
+  // Mengambil data dari API dengan Infinite Query (Cursor-based)
+  const { 
+    data, 
+    isLoading, 
+    isError, 
+    refetch, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage 
+  } = useGetUsers({
+    search: searchQuery || undefined,
     include: 'roles,company_partner',
-    search: searchQuery, // Menggunakan pencarian server-side
+    limit: 10,
   });
 
-  const handleAddUser = () => {
-    console.log('Add user pressed');
-  };
+  // Menggabungkan data dari semua halaman yang sudah diambil
+  const users = data?.pages.flatMap(page => page.data) || [];
 
-  const users = data?.data || [];
+  const handleAddUser = () => {
+    console.log('Navigasi ke halaman tambah user...');
+  };
 
   return (
     <BaseListScreen
@@ -26,16 +36,19 @@ const UserListPage = () => {
       onSearchChange={setSearchQuery}
       isLoading={isLoading}
       isError={isError}
-      isEmpty={users.length === 0}
+      isEmpty={!isLoading && users.length === 0}
       data={users}
       onRetry={refetch}
       onAdd={handleAddUser}
+      onLoadMore={fetchNextPage}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
       renderItem={(user: any) => (
         <UserCard
           key={user.id}
           name={user.fullName}
-          role={user.roles?.[0]?.name || 'No Role'}
-          company={user.companyPartner?.name || 'No Company'}
+          role={user.roles?.[0]?.name || 'N/A'}
+          company={user.companyPartner?.name || 'N/A'}
           isActive={user.isActive}
           email={user.email}
           phone={user.phoneNo}

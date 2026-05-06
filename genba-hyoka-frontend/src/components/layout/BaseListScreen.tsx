@@ -20,6 +20,10 @@ interface BaseListScreenProps<T> {
   renderItem: (item: T, index: number) => React.ReactNode;
   emptyMessage?: string;
   errorMessage?: string;
+  customRightElement?: React.ReactNode;
+  onLoadMore?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 }
 
 function BaseListScreen<T>({
@@ -36,15 +40,29 @@ function BaseListScreen<T>({
   renderItem,
   emptyMessage = 'Tidak ada data ditemukan.',
   errorMessage = 'Terjadi kesalahan saat mengambil data dari server.',
+  customRightElement,
+  onLoadMore,
+  hasNextPage,
+  isFetchingNextPage,
 }: BaseListScreenProps<T>) {
+  const handleScroll = (e: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
+    
+    if (isCloseToBottom && hasNextPage && !isFetchingNextPage && onLoadMore) {
+      onLoadMore();
+    }
+  };
+
   return (
     <View flex={1} backgroundColor={COLORS.pageBackground}>
       <SafeAreaView style={{ flex: 1 }}>
         <ListHeader title={title} />
         
         {/* Search Bar Container */}
-        <View paddingHorizontal="$4" paddingTop="$4" paddingBottom="$2">
+        <XStack paddingHorizontal="$4" paddingTop="$4" paddingBottom="$2" gap="$2">
           <XStack 
+            flex={1}
             backgroundColor="white" 
             borderRadius={8} 
             borderWidth={1} 
@@ -65,11 +83,14 @@ function BaseListScreen<T>({
               focusStyle={{ borderWidth: 0, outlineWidth: 0 }}
             />
           </XStack>
-        </View>
+          {customRightElement}
+        </XStack>
         
         <ScrollView 
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         >
           {isLoading ? (
             <YStack padding="$10" alignItems="center" justifyContent="center" gap="$4">
@@ -101,6 +122,11 @@ function BaseListScreen<T>({
           ) : (
             <YStack gap="$5">
               {data.map((item, index) => renderItem(item, index))}
+              {isFetchingNextPage && (
+                <YStack padding="$4" alignItems="center">
+                  <Spinner size="small" color={COLORS.primary} />
+                </YStack>
+              )}
             </YStack>
           )}
         </ScrollView>
