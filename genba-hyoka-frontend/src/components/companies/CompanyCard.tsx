@@ -4,14 +4,17 @@ import { ChevronDown, ChevronUp, MapPin, Mail, Phone, Pencil, Trash2, Users } fr
 import { COLORS } from '../../constants/theme';
 
 export interface CompanyCardProps {
+  id: string;
   name: string;
   address: string;
   logo?: string;
   email?: string;
   phone?: string;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-const CompanyCard: React.FC<CompanyCardProps> = ({ name, address, logo, email, phone }) => {
+const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, email, phone, onEdit, onDelete }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -104,6 +107,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ name, address, logo, email, p
                 height={40}
                 paddingHorizontal="$4"
                 pressStyle={{ backgroundColor: '#F8F9FA' }}
+                onPress={() => onEdit?.(id)}
               >
                 <Text fontSize={13} fontWeight="700" color={COLORS.textMain}>Edit</Text>
               </Button>
@@ -117,6 +121,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ name, address, logo, email, p
               borderColor="#E74C3C"
               icon={<Trash2 size={18} color="#E74C3C" />}
               pressStyle={{ backgroundColor: '#E74C3C1A' }}
+              onPress={() => onDelete?.(id)}
             />
           </XStack>
         </YStack>
