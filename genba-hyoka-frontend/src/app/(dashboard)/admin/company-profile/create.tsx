@@ -41,7 +41,9 @@ const companyProfileSchema: FormSchema = {
       type: "file",
       rules: {
         max_size_mb: 1,
-        allowed_extensions: [".jpg", ".jpeg", ".png"]
+        allowed_extensions: [".jpg", ".jpeg", ".png"],
+        model_name: "companies",
+        is_public: true
       }
     },
     {
