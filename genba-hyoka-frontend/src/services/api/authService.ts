@@ -20,5 +20,13 @@ export const authService = {
   refresh: async () => {
     const response = await axiosClient.post('/auth/refresh-token');
     return response.data;
+  },
+
+  changePassword: async (newPassword: string, userId?: string) => {
+    const response = await axiosClient.patch('/auth/change-password', {
+      new_password: newPassword,
+      userId
+    });
+    return response.data;
   }
 };

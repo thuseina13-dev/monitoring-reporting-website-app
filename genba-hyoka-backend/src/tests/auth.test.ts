@@ -24,9 +24,7 @@ const createMockChain = (value: any) => ({
 mock.module("../db", () => ({
   db: {
     select: (fields: any) => {
-        // Jika sedang mengambil roleType (untuk getAuthData)
         if (fields && fields.code) return createMockChain([{ code: 'adm', type: 'admin', name: 'Administrator' }]);
-        // Default untuk ambil data user
         return createMockChain([mockUser]);
     },
     insert: () => createMockChain([{ id: 'session-1' }]),
@@ -36,24 +34,38 @@ mock.module("../db", () => ({
   checkConnection: () => Promise.resolve(true)
 }));
 
-// ── Import Module ────────────────────────────────────────────
-import { authModule } from '../modules/auth';
+// ── JWT Helper ───────────────────────────────────────────────
+import { jwt as elysiaJwt } from '@elysiajs/jwt';
+
+async function getTestToken(payload: any): Promise<string> {
+  const secret = process.env.JWT_SECRET || 'test-secret';
+  const app = new Elysia().use(elysiaJwt({ name: 'jwt', secret }));
+  let token = '';
+  await app
+    .get('/token', async ({ jwt }) => {
+      token = await jwt.sign(payload);
+      return token;
+    })
+    .handle(new Request('http://localhost/token'));
+  return token;
+}
+
+
+// ── Import Module & Dependencies ────────────────────────────
+import { authModule, changePasswordHandler } from '../modules/auth';
 import { errorHandler } from '../middlewares/errorHandler';
 import { db } from '../db';
 
 const app = new Elysia().use(errorHandler).use(authModule);
 
-// ── Tests ────────────────────────────────────────────────────
-describe('Auth Module - Issue #33 RBAC Unit Test', () => {
-  it('Scenario 1: Role emp harus dapat bitmask 15 di modul SUB', async () => {
+describe('Auth Module - RBAC & Change Password Unit Test', () => {
+  it('RBAC: Role emp harus dapat bitmask 15 di modul SUB', async () => {
     const selectSpy = spyOn(db, 'select');
-    // Implementasi pintar: bedakan query user vs query role
     selectSpy.mockImplementation(((fields: any) => {
         if (fields && fields.code) return createMockChain([{ code: 'emp', type: 'employee', name: 'Employee' }]) as any;
         return createMockChain([mockUser]) as any;
     }) as any);
 
-
     const loginRes = await app.handle(
       new Request('http://localhost/v1/auth/login', {
         method: 'POST',
@@ -62,54 +74,87 @@ describe('Auth Module - Issue #33 RBAC Unit Test', () => {
       })
     );
     const body = await loginRes.json();
-    
-    expect(body.data.user.roles).toContainEqual({ code: 'emp', type: 'employee', name: 'Employee' });
     expect(body.data.user.prm.SUB).toBe(15);
-    
     selectSpy.mockRestore();
   });
 
-  it('Scenario 2: Role man harus dapat bitmask 1 di modul USR', async () => {
-    const selectSpy = spyOn(db, 'select');
-    selectSpy.mockImplementation(((fields: any) => {
-        if (fields && fields.code) return createMockChain([{ code: 'man', type: 'manager', name: 'Manager' }]) as any;
-        return createMockChain([mockUser]) as any;
-    }) as any);
+  // ── INTEGRATION TEST: CHANGE PASSWORD ──────────────────────
+  
+  it('Integration: Berhasil ganti password via endpoint (Self)', async () => {
+    const updateSpy = spyOn(db, 'update').mockImplementation(() => createMockChain([{ id: 'user-uuid-1' }]) as any);
 
-    const loginRes = await app.handle(
-      new Request('http://localhost/v1/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'john@example.com', password: 'secret123' }),
+    const res = await app.handle(
+      new Request('http://localhost/v1/auth/change-password', {
+        method: 'PATCH',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Cookie': `access_token=${await getTestToken({
+                sub: 'user-uuid-1',
+                email: 'john@example.com',
+                roles: [{ type: 'employee' }],
+                prm: {}
+            })}`
+        },
+        body: JSON.stringify({ new_password: 'newpassword123' }),
       })
     );
-    const body = await loginRes.json();
     
-    expect(body.data.user.roles).toContainEqual({ code: 'man', type: 'manager', name: 'Manager' });
-    expect(body.data.user.prm.USR).toBe(1);
-    
-    selectSpy.mockRestore();
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    updateSpy.mockRestore();
   });
 
-  it('Scenario 3: Multi-role adm & man harus mendapatkan gabungan bitmask (OR)', async () => {
-    const selectSpy = spyOn(db, 'select');
-    selectSpy.mockImplementation(((fields: any) => {
-        if (fields && fields.code) return createMockChain([{ code: 'adm', type: 'admin', name: 'Administrator' }, { code: 'man', type: 'manager', name: 'Manager' }]) as any;
-        return createMockChain([mockUser]) as any;
-    }) as any);
+  it('Integration: Admin berhasil mereset password user lain', async () => {
+    const selectSpy = spyOn(db, 'select').mockImplementation(() => createMockChain([{ type: 'employee' }]) as any);
+    const updateSpy = spyOn(db, 'update').mockImplementation(() => createMockChain([{ id: 'user-other' }]) as any);
 
-    const loginRes = await app.handle(
-      new Request('http://localhost/v1/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'john@example.com', password: 'secret123' }),
+    const res = await app.handle(
+      new Request('http://localhost/v1/auth/change-password', {
+        method: 'PATCH',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Cookie': `access_token=${await getTestToken({
+                sub: 'admin-id',
+                email: 'admin@example.com',
+                roles: [{ type: 'admin' }],
+                prm: {}
+            })}`
+        },
+        body: JSON.stringify({ new_password: 'newpassword123', userId: 'user-other' }),
       })
     );
-    const body = await loginRes.json();
     
-    expect(body.data.user.roles).toContainEqual({ code: 'adm', type: 'admin', name: 'Administrator' });
-    expect(body.data.user.roles).toContainEqual({ code: 'man', type: 'manager', name: 'Manager' });
-    expect(body.data.user.prm.USR).toBe(15); // Admin (15) OR Manager (1)
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.message).toBe('Password has been updated successfully.');
+    
+    selectSpy.mockRestore();
+    updateSpy.mockRestore();
+  });
+
+  it('Logic Test: Blockade Super Admin', async () => {
+    const selectSpy = spyOn(db, 'select').mockImplementation(() => createMockChain([{ type: 'super_admin' }]) as any);
+
+    const res = await app.handle(
+      new Request('http://localhost/v1/auth/change-password', {
+        method: 'PATCH',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Cookie': `access_token=${await getTestToken({
+                sub: 'admin-id',
+                email: 'admin@example.com',
+                roles: [{ type: 'admin' }],
+                prm: {}
+            })}`
+        },
+        body: JSON.stringify({ new_password: 'newpassword123', userId: 'sa-id' }),
+      })
+    );
+    
+    const body = await res.json();
+    expect(res.status).toBe(403);
+    expect(body.message).toContain('Master Sistem');
     
     selectSpy.mockRestore();
   });

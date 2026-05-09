@@ -105,6 +105,7 @@ export const changePasswordDocs = {
   },
   body: t.Object({
     new_password: t.String({ minLength: 8, error: 'Password baru minimal 8 karakter.' }),
+    userId: t.Optional(t.String({ error: 'User ID harus berupa string.' }))
   }),
   response: {
     200: successResponse(t.Object({})),
