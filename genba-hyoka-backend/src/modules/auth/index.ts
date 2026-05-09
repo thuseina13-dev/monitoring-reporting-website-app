@@ -1,13 +1,14 @@
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { db } from '../../db';
 import { users, sessions, roles, userRoles } from '../../db/schema';
 import { createAuditLog } from '../../utils/auditLogger';
 import { eq, and, sql, isNull } from 'drizzle-orm';
 import { AppError } from '../../utils/AppError';
 import { sendSuccess } from '../../utils/response';
-import { loginDocs, meDocs, logoutDocs, refreshTokenDocs } from './docs';
+import { loginDocs, meDocs, logoutDocs, refreshTokenDocs, changePasswordDocs } from './docs';
 import { jwt } from '@elysiajs/jwt';
 import { ROLE_PERMISSIONS, RoleCode } from './constants/permissions';
+import { jwtGuard } from '../../middlewares/jwtGuard';
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '9h';
@@ -266,4 +267,37 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
       return sendSuccess(payload, 'Token valid.');
     },
     meDocs
+  )
+
+  // ── Protected Routes ───────────────────────────────────────
+  .group('', (app) => 
+    app
+      .use(jwtGuard)
+      .patch(
+        '/change-password',
+        async ({ body, currentUser }) => {
+          const { new_password } = body;
+
+          // Hashing password baru
+          const hashedPassword = await Bun.password.hash(new_password);
+
+          // Update password di database
+          await db.update(users)
+            .set({
+              password: hashedPassword,
+              updatedAt: new Date()
+            })
+            .where(eq(users.id, currentUser.id));
+
+          // Audit Log
+          await createAuditLog({
+            userId: currentUser.id,
+            type: 'PATCH',
+            description: 'User berhasil mengganti password'
+          });
+
+          return sendSuccess(null, 'Your password has been updated successfully.');
+        },
+        changePasswordDocs
+      )
   );

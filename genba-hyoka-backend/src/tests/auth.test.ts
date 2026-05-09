@@ -114,5 +114,3 @@ describe('Auth Module - Issue #33 RBAC Unit Test', () => {
     selectSpy.mockRestore();
   });
 });
-
-

@@ -95,3 +95,19 @@ export const refreshTokenDocs = {
 };
 
 
+// ── PATCH /v1/auth/change-password ──────────────────────────
+export const changePasswordDocs = {
+  detail: {
+    summary: 'Ganti Password',
+    description: 'Mengganti password user yang sedang login. Memerlukan token autentikasi.',
+    tags: ['Auth'],
+    security: [{ cookieAuth: [], csrfToken: [] }],
+  },
+  body: t.Object({
+    new_password: t.String({ minLength: 8, error: 'Password baru minimal 8 karakter.' }),
+  }),
+  response: {
+    200: successResponse(t.Object({})),
+    ...errorResponses([400, 401, 500]),
+  },
+};
