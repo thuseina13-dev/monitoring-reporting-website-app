@@ -9,7 +9,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Location from 'expo-location';
 import SignatureScreen, { SignatureViewRef } from 'react-native-signature-canvas';
-import { Platform } from 'react-native';
+import { Platform, ActivityIndicator } from 'react-native';
+import { storageService } from '../../services/api/storageService';
 
 export interface FieldProps {
   fieldConfig: FormField;
@@ -189,6 +190,8 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
     rules: fieldConfig.rules,
   });
 
+  const [uploading, setUploading] = useState(false);
+
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -197,7 +200,21 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
       });
 
       if (!result.canceled) {
-        field.onChange(result.assets[0].name);
+        const asset = result.assets[0];
+        const modelName = fieldConfig.rules?.model_name || 'general';
+        const isPublic = fieldConfig.rules?.is_public === true;
+
+        setUploading(true);
+        try {
+          const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
+          // Simpan URL file yang dikembalikan dari backend
+          field.onChange(uploadResult.data.file_url);
+        } catch (error: any) {
+          console.error('Upload failed:', error);
+          alert('Gagal mengunggah file: ' + (error.response?.data?.message || error.message));
+        } finally {
+          setUploading(false);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -211,13 +228,19 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
       </Label>
       <Button
-        icon={FileUp}
+        icon={uploading ? () => <ActivityIndicator size="small" color="#fff" /> : FileUp}
         onPress={pickDocument}
-        disabled={fieldConfig.is_locked}
+        disabled={fieldConfig.is_locked || uploading}
       >
-        Unggah File
+        {uploading ? 'Mengunggah...' : 'Unggah File'}
       </Button>
-      {field.value ? <Text color="$green10" fontSize="$2">File: {field.value}</Text> : null}
+      {field.value ? (
+        <YStack mt="$2" p="$2" br="$2" bc="$backgroundHover">
+          <Text color="$green10" fontSize="$2" numberOfLines={1}>
+            Terunggah: {field.value.split('/').pop()}
+          </Text>
+        </YStack>
+      ) : null}
       {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
     </YStack>
   );
@@ -418,6 +441,8 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
     rules: fieldConfig.rules,
   });
 
+  const [uploading, setUploading] = useState(false);
+
   const takePhoto = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -432,7 +457,21 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
       });
 
       if (!result.canceled) {
-        field.onChange(result.assets[0].uri);
+        const asset = result.assets[0];
+        const modelName = fieldConfig.rules?.model_name || 'general';
+        const isPublic = fieldConfig.rules?.is_public === true;
+
+        setUploading(true);
+        try {
+          const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
+          // Simpan URL file yang dikembalikan dari backend
+          field.onChange(uploadResult.data.file_url);
+        } catch (error: any) {
+          console.error('Upload failed:', error);
+          alert('Gagal mengunggah foto: ' + (error.response?.data?.message || error.message));
+        } finally {
+          setUploading(false);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -446,13 +485,19 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
       </Label>
       <Button
-        icon={Camera}
+        icon={uploading ? () => <ActivityIndicator size="small" color="#fff" /> : Camera}
         onPress={takePhoto}
-        disabled={fieldConfig.is_locked}
+        disabled={fieldConfig.is_locked || uploading}
       >
-        Ambil Foto
+        {uploading ? 'Mengunggah...' : 'Ambil Foto'}
       </Button>
-      {field.value ? <Text color="$green10" fontSize="$2">Foto berhasil diambil</Text> : null}
+      {field.value ? (
+        <YStack mt="$2" p="$2" br="$2" bc="$backgroundHover">
+          <Text color="$green10" fontSize="$2" numberOfLines={1}>
+            Foto tersimpan: {field.value.split('/').pop()}
+          </Text>
+        </YStack>
+      ) : null}
       {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
     </YStack>
   );

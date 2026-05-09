@@ -14,6 +14,8 @@ import { cors } from '@elysiajs/cors';
 
 import { wsModule } from './modules/ws';
 import { notificationsModule } from './modules/notifications';
+import { uploadModule } from './modules/upload';
+import { staticPlugin } from '@elysiajs/static';
 
 const app = new Elysia({
   websocket: {
@@ -59,6 +61,11 @@ const app = new Elysia({
   .use(rolesModule)
   .use(companyProfileModule)
   .use(notificationsModule)
+  .use(uploadModule)
+  .use(staticPlugin({
+    assets: 'uploads',
+    prefix: '/uploads'
+  }))
   .onStart(async () => {
     const isConnected = await checkConnection();
     if (isConnected) {
