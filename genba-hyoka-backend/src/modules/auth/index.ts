@@ -276,27 +276,58 @@ export const authModule = new Elysia({ prefix: '/v1/auth' })
       .patch(
         '/change-password',
         async ({ body, currentUser }) => {
-          const { new_password } = body;
+          const { new_password, userId } = body;
+
+          // Target User: Gunakan userId dari body jika ada, jika tidak gunakan currentUser
+          let targetUserId = currentUser.id;
+          
+          if (userId && userId !== currentUser.id) {
+            // Jika merubah user lain, cek apakah yang login adalah Admin/Super Admin
+            const isAdmin = currentUser.roles.some((r: any) => r.type === 'admin' || r.type === 'super_admin');
+            if (!isAdmin) {
+              throw new AppError(403, 'Anda tidak memiliki otoritas untuk mereset password user lain.');
+            }
+            
+            // Blokade: Jangan izinkan admin/siapapun mereset password Super Admin (Master Sistem) via endpoint ini
+            const [targetUserRole] = await db
+              .select({ type: roles.type })
+              .from(userRoles)
+              .innerJoin(roles, eq(userRoles.roleId, roles.id))
+              .where(eq(userRoles.userId, userId))
+              .limit(1);
+
+            if (targetUserRole?.type === 'super_admin') {
+              throw new AppError(403, 'Akun Master Sistem tidak dapat dimodifikasi via fitur ini.');
+            }
+
+            targetUserId = userId;
+          }
 
           // Hashing password baru
           const hashedPassword = await Bun.password.hash(new_password);
 
           // Update password di database
-          await db.update(users)
+          const [updated] = await db.update(users)
             .set({
               password: hashedPassword,
-              updatedAt: new Date()
+              updatedAt: new Date(),
+              updatedBy: currentUser.id
             })
-            .where(eq(users.id, currentUser.id));
+            .where(and(eq(users.id, targetUserId), isNull(users.deletedAt)))
+            .returning({ id: users.id, fullName: users.fullName });
+
+          if (!updated) {
+            throw new AppError(404, 'User tidak ditemukan atau sudah dihapus.');
+          }
 
           // Audit Log
           await createAuditLog({
             userId: currentUser.id,
             type: 'PATCH',
-            description: 'User berhasil mengganti password'
+            description: `Password ${targetUserId === currentUser.id ? 'diri sendiri' : 'user ' + updated.fullName} berhasil diperbarui`
           });
 
-          return sendSuccess(null, 'Your password has been updated successfully.');
+          return sendSuccess(null, 'Password has been updated successfully.');
         },
         changePasswordDocs
       )
