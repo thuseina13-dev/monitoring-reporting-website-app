@@ -3,6 +3,8 @@ import { companyService } from '../../services/api/companyService';
 import { router } from 'expo-router';
 import { useToastController } from '@tamagui/toast';
 
+import { parseBackendError } from '../../utils/errorParser';
+
 export const useCreateCompany = () => {
   const queryClient = useQueryClient();
   const toast = useToastController();
@@ -24,7 +26,7 @@ export const useCreateCompany = () => {
     onError: (error: any) => {
       console.error('Failed to create company:', error);
       toast.show('Gagal', {
-        message: 'Gagal membuat profil perusahaan.',
+        message: parseBackendError(error),
         type: 'error',
         native: false,
       });

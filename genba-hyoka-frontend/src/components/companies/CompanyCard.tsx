@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { YStack, XStack, Text, View, Button, Image } from 'tamagui';
-import { ChevronDown, ChevronUp, MapPin, Mail, Phone, Pencil, Trash2, Users } from '@tamagui/lucide-icons';
+import { ChevronDown, ChevronUp, MapPin, Mail, Phone, Trash2, Users } from '@tamagui/lucide-icons';
 import { COLORS } from '../../constants/theme';
 
 export interface CompanyCardProps {
@@ -31,12 +31,12 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, emai
             width={55}
             height={55}
             borderRadius={27.5}
-            backgroundColor="#F8F9FA"
+            backgroundColor={COLORS.bgSoft}
             alignItems="center"
             justifyContent="center"
             overflow="hidden"
             borderWidth={1}
-            borderColor="#E9ECEF"
+            borderColor={COLORS.borderMedium}
           >
             {logo && typeof logo === 'string' && logo.trim().length > 0 ? (
               <Image source={{ uri: logo }} width="100%" height="100%" />
@@ -66,7 +66,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, emai
 
       {isExpanded && (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4">
-          <YStack gap="$2.5" paddingTop="$3" borderTopWidth={1} borderTopColor="#F8F9FA">
+          <YStack gap="$2.5" paddingTop="$3" borderTopWidth={1} borderTopColor={COLORS.bgSoft}>
             {email && (
               <XStack alignItems="center" gap="$3">
                 <Mail size={18} color={COLORS.textSecondary} />
@@ -95,7 +95,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, emai
                 borderColor={COLORS.primary}
                 height={40}
                 paddingHorizontal="$3"
-                pressStyle={{ backgroundColor: '#2ECC711A' }}
+                pressStyle={{ backgroundColor: COLORS.transparent.primary }}
                 icon={<Users size={16} color={COLORS.primary} />}
               >
                 <Text fontSize={13} fontWeight="700" color={COLORS.primary}>Lihat Daftar User</Text>
@@ -106,7 +106,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, emai
                 borderColor={COLORS.borderLight}
                 height={40}
                 paddingHorizontal="$4"
-                pressStyle={{ backgroundColor: '#F8F9FA' }}
+                pressStyle={{ backgroundColor: COLORS.bgSoft }}
                 onPress={() => onEdit?.(id)}
               >
                 <Text fontSize={13} fontWeight="700" color={COLORS.textMain}>Edit</Text>
@@ -118,9 +118,9 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, emai
               circular
               backgroundColor="transparent"
               borderWidth={1}
-              borderColor="#E74C3C"
-              icon={<Trash2 size={18} color="#E74C3C" />}
-              pressStyle={{ backgroundColor: '#E74C3C1A' }}
+              borderColor={COLORS.danger}
+              icon={<Trash2 size={18} color={COLORS.danger} />}
+              pressStyle={{ backgroundColor: COLORS.transparent.danger }}
               onPress={() => onDelete?.(id)}
             />
           </XStack>

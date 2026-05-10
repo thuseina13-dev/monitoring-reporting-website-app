@@ -119,7 +119,7 @@ function BaseListScreen<T>({
             </YStack>
           ) : isError ? (
             <YStack padding="$10" alignItems="center" justifyContent="center" gap="$4">
-              <AlertCircle size={48} color="#E74C3C" />
+              <AlertCircle size={48} color={COLORS.danger} />
               <Text color={COLORS.textMain} textAlign="center">{errorMessage}</Text>
               <Button 
                 backgroundColor={COLORS.primary} 

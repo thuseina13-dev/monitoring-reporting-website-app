@@ -61,7 +61,7 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
             width={46}
             height={46}
             borderRadius={23}
-            backgroundColor="#F8F9FA"
+            backgroundColor={COLORS.bgSoft}
             alignItems="center"
             justifyContent="center"
             borderWidth={1}
@@ -78,7 +78,7 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
 
         <XStack gap="$2" alignItems="center">
           <XStack
-            backgroundColor={isActive ? '#2ECC711A' : '#95A5A61A'}
+            backgroundColor={isActive ? COLORS.transparent.primary : COLORS.transparent.gray}
             paddingHorizontal="$2.5"
             paddingVertical="$1"
             borderRadius={20}
@@ -98,7 +98,7 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
       {/* Bagian Detail Informasi (Yang Anda sebut Pop-up/Expandable) */}
       {isExpanded && (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$5">
-          <YStack gap="$4" paddingTop="$4" borderTopWidth={1} borderTopColor="#F2F2F2">
+          <YStack gap="$4" paddingTop="$4" borderTopWidth={1} borderTopColor={COLORS.borderSeparator}>
             {email && (
               <XStack gap="$4" alignItems="center">
                 <Mail size={22} color={COLORS.textSecondary} strokeWidth={1.5} />
@@ -131,7 +131,7 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
               <ActionButton 
                 icon={<Power size={14} />} 
                 label={isActive ? "Non-aktifkan" : "Aktifkan"} 
-                color={isActive ? "#E74C3C" : "#2ECC71"} 
+                color={isActive ? COLORS.danger : COLORS.primary} 
                 onPress={handleToggleStatusClick}
               />
             </XStack>
@@ -139,8 +139,8 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
               size="$3.5"
               circular
               backgroundColor="transparent"
-              icon={<Trash2 size={20} color="#E74C3C" />}
-              pressStyle={{ backgroundColor: '#E74C3C1A' }}
+              icon={<Trash2 size={20} color={COLORS.danger} />}
+              pressStyle={{ backgroundColor: COLORS.transparent.danger }}
               onPress={handleDeleteClick}
             />
           </XStack>
@@ -191,7 +191,7 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
                 </AlertDialog.Cancel>
                 <AlertDialog.Action asChild onPress={handleConfirmAction}>
                   <Button 
-                    backgroundColor={dialogConfig.type === 'delete' || isActive ? "#E74C3C" : COLORS.primary} 
+                    backgroundColor={dialogConfig.type === 'delete' || isActive ? COLORS.danger : COLORS.primary} 
                   >
                     <Text color="white" fontWeight="bold">
                       {dialogConfig.type === 'status' ? 'Ya, Lanjutkan' : 'Hapus'}
@@ -208,14 +208,14 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
   );
 };
 
-const ActionButton = ({ icon, label, color = "#2C3E50", onPress }: { icon: any, label: string, color?: string, onPress?: () => void }) => (
+const ActionButton = ({ icon, label, color = COLORS.textMain, onPress }: { icon: any, label: string, color?: string, onPress?: () => void }) => (
   <Button
     size="$3.5"
     variant="outlined"
     borderColor={COLORS.borderLight}
     paddingHorizontal="$3"
     backgroundColor="white"
-    pressStyle={{ backgroundColor: '#F8F9FA' }}
+    pressStyle={{ backgroundColor: COLORS.bgSoft }}
     onPress={onPress}
   >
     <XStack gap="$1.5" alignItems="center">

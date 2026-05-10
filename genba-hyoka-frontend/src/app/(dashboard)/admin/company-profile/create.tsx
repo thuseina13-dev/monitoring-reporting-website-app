@@ -6,7 +6,6 @@ import { useCreateCompany } from '../../../../hooks/companies/useCreateCompany';
 import { router } from 'expo-router';
 import ListHeader from '../../../../components/layout/ListHeader';
 import { COLORS } from '../../../../constants/theme';
-import { useToastController } from '@tamagui/toast';
 
 const companyProfileSchema: FormSchema = {
   fields: [
@@ -69,7 +68,6 @@ const companyProfileSchema: FormSchema = {
 
 export default function CreateCompanyProfilePage() {
   const { mutate, isPending } = useCreateCompany();
-  const toast = useToastController();
 
   const handleSubmit = (data: any) => {
     const payload = {
@@ -77,26 +75,15 @@ export default function CreateCompanyProfilePage() {
       logo: data.logo || '',
     };
 
-    mutate(payload, {
-      onSuccess: () => {
-        // useCreateCompany already handles toast on success
-      },
-      onError: (err: any) => {
-        toast.show('Gagal', {
-          message: err?.response?.data?.message || err.message,
-          type: 'error',
-          native: false,
-        });
-      }
-    });
+    mutate(payload);
   };
 
   return (
-    <YStack flex={1} backgroundColor="#fff">
+    <YStack flex={1} backgroundColor={COLORS.cardBackground}>
       <ListHeader title="Tambah Profil Perusahaan" />
       <ScrollView style={{ flex: 1 }}>
         <YStack padding="$4" gap="$4">
-          <Text color="$colorFocus" textAlign="center" fontSize={14}>
+          <Text color={COLORS.textSecondary} textAlign="center" fontSize={14}>
             Lengkapi data di bawah ini untuk mendaftarkan perusahaan baru.
           </Text>
           

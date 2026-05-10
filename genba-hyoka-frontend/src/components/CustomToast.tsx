@@ -1,5 +1,5 @@
 import { Toast, useToastState, useToastController } from '@tamagui/toast';
-import { YStack, XStack, Text, Button, Circle } from 'tamagui';
+import { YStack, XStack, Button, Circle } from 'tamagui';
 import { X, CheckCircle, AlertCircle, Info } from '@tamagui/lucide-icons';
 import { LinearGradient } from 'tamagui/linear-gradient';
 import { COLORS } from '../constants/theme';
@@ -16,7 +16,7 @@ export const CustomToast = () => {
   const Icon = isError ? AlertCircle : (currentToast.type === 'success' ? CheckCircle : Info);
   
   const bgColors = isError 
-    ? COLORS.gradients.warning 
+    ? COLORS.gradients.danger 
     : COLORS.gradients.primary;
 
 

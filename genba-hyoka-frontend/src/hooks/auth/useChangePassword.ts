@@ -2,6 +2,8 @@ import { useMutation } from '@tanstack/react-query';
 import { authService } from '../../services/api/authService';
 import { useToastController } from '@tamagui/toast';
 
+import { parseBackendError } from '../../utils/errorParser';
+
 export const useChangePassword = () => {
   const toast = useToastController();
 
@@ -15,9 +17,8 @@ export const useChangePassword = () => {
       });
     },
     onError: (error: any) => {
-      const message = error.response?.data?.message || 'Gagal memperbarui password.';
       toast.show('Gagal', {
-        message,
+        message: parseBackendError(error),
         type: 'error',
         native: false,
       });

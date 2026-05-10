@@ -1,14 +1,14 @@
 import React from 'react';
-import { View, Text, XStack, YStack, Avatar, Circle, Popover, Button, ScrollView } from 'tamagui';
+import { View, Text, XStack, YStack, Avatar, Popover, Button, ScrollView } from 'tamagui';
 import { Image } from 'expo-image'
 import { Bell, ChevronDown } from '@tamagui/lucide-icons';
 import { useAuthStore } from '../../store/authStore';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { COLORS } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import disconnectedImage from '../../assets/menu-icon/disconnected-icon.png';
 import connectedImage from '../../assets/menu-icon/connected-icon.png';
 import reconnectedImage from '../../assets/menu-icon/reconnected-icon.png'
+import { useWSStore } from '../../store/wsStore';
 
 // Dummy fetcher for notifications
 const fetchNotifications = async ({ pageParam = 1 }) => {
@@ -23,7 +23,6 @@ const fetchNotifications = async ({ pageParam = 1 }) => {
   }, 1000));
 };
 
-import { useWSStore } from '../../store/wsStore';
 
 export function Header() {
   const { activeRole, setActiveRole, roles } = useAuthStore() as any;

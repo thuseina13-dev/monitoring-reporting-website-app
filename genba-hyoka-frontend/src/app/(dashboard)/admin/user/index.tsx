@@ -3,16 +3,11 @@ import BaseListScreen from '../../../../components/layout/BaseListScreen';
 import UserCard from '../../../../components/users/UserCard';
 import { useGetUsers } from '../../../../hooks/users/useGetUsers';
 import { ChangePasswordModal } from '../../../../components/auth/ChangePasswordModal';
-import { useAuthStore } from '../../../../store/authStore';
-import { Button, XStack, Text } from 'tamagui';
-import { Key } from '@tamagui/lucide-icons';
-import { COLORS } from '../../../../constants/theme';
 
 const UserListPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [targetUser, setTargetUser] = useState<{ id: string; name: string } | null>(null);
-  const { user, activeRole } = useAuthStore() as any;
 
   // Mengambil data dari API dengan Infinite Query (Cursor-based)
   const { 
@@ -36,9 +31,6 @@ const UserListPage = () => {
     console.log('Navigasi ke halaman tambah user...');
   };
 
-  // Check if current user is Super Admin or Admin (based on ROLE_BIT or role type)
-  // According to Issue #66: "Tombol/Pemicu pop-up hanya terlihat dan bisa diklik oleh role Super User"
-  const isSuperUser = activeRole === 'sup' || activeRole === 'adm';
 
   return (
     <>
@@ -77,27 +69,6 @@ const UserListPage = () => {
         )}
       />
 
-      {/* Floating Action Button for Change Password (specific for Super User as per requirement) */}
-      {isSuperUser && (
-        <XStack 
-          position="absolute" 
-          bottom={100} 
-          right={20} 
-          gap="$2"
-        >
-          <Button
-            size="$4"
-            circular
-            backgroundColor={COLORS.primary}
-            elevation={5}
-            onPress={() => {
-              setTargetUser(null);
-              setIsChangePasswordOpen(true);
-            }}
-            icon={<Key color="white" size={20} />}
-          />
-        </XStack>
-      )}
 
       <ChangePasswordModal 
         isOpen={isChangePasswordOpen}
