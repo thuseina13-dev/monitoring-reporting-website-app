@@ -159,7 +159,17 @@ const InputDateTime: React.FC<FieldProps> = ({ fieldConfig, control }) => {
     control,
     rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
-...
+
+  const [show, setShow] = useState(false);
+  const dateValue = field.value ? new Date(field.value) : new Date();
+
+  const onChange = (event: any, selectedDate?: Date) => {
+    setShow(Platform.OS === 'ios');
+    if (selectedDate) {
+      field.onChange(selectedDate.toISOString());
+    }
+  };
+
   return (
     <YStack gap="$1" mb="$4">
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
@@ -174,7 +184,14 @@ const InputDateTime: React.FC<FieldProps> = ({ fieldConfig, control }) => {
       >
         {field.value ? new Date(field.value).toLocaleString() : 'Pilih Tanggal & Waktu'}
       </Button>
-...
+      {show && (
+        <DateTimePicker
+          value={dateValue}
+          mode="datetime"
+          is24Hour={true}
+          onChange={onChange}
+        />
+      )}
       <ErrorMessage error={fieldState.error} />
     </YStack>
   );
@@ -184,7 +201,7 @@ const InputMap: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
   const [loading, setLoading] = useState(false);
@@ -582,4 +599,3 @@ export const FormComponentMap: Record<string, React.FC<FieldProps>> = {
   dropdown: InputDropdown,
   checkbox: InputCheckbox,
 };
-

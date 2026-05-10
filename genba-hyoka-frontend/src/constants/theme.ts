@@ -9,6 +9,7 @@ export const COLORS = {
   warning: '#F1C40F',
   danger: '#E74C3C',
   info: '#3498DB',
+  success: '#2ECC71',
   normal: '#95A5A6',
   
   // Backgrounds
