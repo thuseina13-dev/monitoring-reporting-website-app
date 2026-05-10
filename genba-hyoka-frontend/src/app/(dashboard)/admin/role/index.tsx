@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { YStack, XStack, Text, Button, Popover } from 'tamagui';
+import { YStack, Text, Button, Popover } from 'tamagui';
 import { ChevronDown, Check } from '@tamagui/lucide-icons';
 import { COLORS } from '../../../../constants/theme';
 import BaseListScreen from '../../../../components/layout/BaseListScreen';
 import RoleCard from '../../../../components/roles/RoleCard';
 import { useGetRoles } from '../../../../hooks/roles/useGetRoles';
+import { router } from 'expo-router';
+import { useDeleteRole } from '../../../../hooks/roles/useDeleteRole';
 
 const roleTypeOptions = [
   { name: 'Semua', type: null },
@@ -17,7 +19,6 @@ const RoleListPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
-  // Destruktur seluruh variabel yang dibutuhkan untuk Infinite Scroll
   const { 
     data, 
     isLoading, 
@@ -32,11 +33,21 @@ const RoleListPage = () => {
     limit: 10,
   });
 
+  const { mutate: deleteRole } = useDeleteRole();
+
   // Gabungkan data dari semua halaman (Infinite Data flattening)
   const roles = data?.pages.flatMap(page => page.data) || [];
 
   const handleAddRole = () => {
-    console.log('Navigasi ke halaman tambah role...');
+    router.push('/admin/role/create');
+  };
+
+  const handleEditRole = (id: string) => {
+    router.push(`/admin/role/edit/${id}`);
+  };
+
+  const handleDeleteRole = (id: string) => {
+    deleteRole(id);
   };
 
   const currentTypeLabel = roleTypeOptions.find(opt => opt.type === selectedType)?.name || 'Semua';
@@ -77,7 +88,7 @@ const RoleListPage = () => {
               backgroundColor="transparent"
               borderRadius={0}
               borderWidth={0}
-              pressStyle={{ backgroundColor: '#F8F9FA' }}
+              pressStyle={{ backgroundColor: COLORS.bgSoft }}
               onPress={() => setSelectedType(opt.type)}
               paddingHorizontal="$4"
             >
@@ -111,11 +122,14 @@ const RoleListPage = () => {
       renderItem={(role: any) => (
         <RoleCard
           key={role.id}
+          id={role.id}
           name={role.name}
           code={role.code}
           description={role.description}
           isActive={!role.deletedAt}
           type={role.type ? role.type.charAt(0).toUpperCase() + role.type.slice(1) : '-'}
+          onEdit={handleEditRole}
+          onDelete={handleDeleteRole}
         />
       )}
     />

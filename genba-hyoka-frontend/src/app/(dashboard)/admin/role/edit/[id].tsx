@@ -2,62 +2,52 @@ import React from 'react';
 import { ScrollView } from 'react-native';
 import { YStack, Text, Spinner } from 'tamagui';
 import { DynamicFormRenderer, FormSchema } from '../../../../../components/DynamicForm';
-import { useGetCompanyById } from '../../../../../hooks/companies/useGetCompanyById';
-import { useUpdateCompany } from '../../../../../hooks/companies/useUpdateCompany';
+import { useGetRoleById } from '../../../../../hooks/roles/useGetRoleById';
+import { useUpdateRole } from '../../../../../hooks/roles/useUpdateRole';
 import { useLocalSearchParams, router } from 'expo-router';
 import ListHeader from '../../../../../components/layout/ListHeader';
 import { COLORS } from '../../../../../constants/theme';
 
-const companyProfileSchema: FormSchema = {
+const roleSchema: FormSchema = {
   fields: [
     {
-      id: "name",
-      label: "Nama Perusahaan",
+      id: "code",
+      label: "Kode Role",
       type: "text",
       rules: {
         required: true,
-        max_length: 255
+        max_length: 5
       }
     },
     {
-      id: "desc",
+      id: "name",
+      label: "Nama Role",
+      type: "text",
+      rules: {
+        required: true,
+        max_length: 50
+      }
+    },
+    {
+      id: "type",
+      label: "Tipe Role",
+      type: "dropdown",
+      data_source: {
+        type: "static",
+        options: [
+          { label: "Administrator", value: "admin" },
+          { label: "Manager", value: "manager" },
+          { label: "Pekerja", value: "employee" }
+        ]
+      },
+      rules: {
+        required: true
+      }
+    },
+    {
+      id: "description",
       label: "Deskripsi",
       type: "textarea",
-      rules: {
-        max_length: 255
-      }
-    },
-    {
-      id: "address",
-      label: "Alamat",
-      type: "textarea",
-      rules: {
-        max_length: 255
-      }
-    },
-    {
-      id: "logo",
-      label: "Logo Perusahaan",
-      type: "file",
-      rules: {
-        max_size_mb: 1,
-        allowed_extensions: [".jpg", ".jpeg", ".png"],
-        model_name: "companies",
-        is_public: true
-      }
-    },
-    {
-      id: "phoneNo",
-      label: "No Telepon",
-      type: "text",
-      rules: {
-        max_length: 25
-      }
-    },
-    {
-      id: "email",
-      label: "Email",
-      type: "text",
       rules: {
         max_length: 255
       }
@@ -65,38 +55,31 @@ const companyProfileSchema: FormSchema = {
   ]
 };
 
-
-
-export default function EditCompanyProfilePage() {
+export default function EditRolePage() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: company, isLoading: isLoadingData } = useGetCompanyById(id);
-  const { mutate: updateCompany, isPending: isUpdating } = useUpdateCompany();
+  const { data: role, isLoading: isLoadingData } = useGetRoleById(id);
+  const { mutate: updateRole, isPending: isUpdating } = useUpdateRole();
 
   const handleSubmit = (data: any) => {
-    const payload = {
-      ...data,
-      logo: typeof data.logo === 'string' ? data.logo : '', 
-    };
-
-    updateCompany({ id, data: payload });
+    updateRole({ id, data });
   };
 
   if (isLoadingData) {
     return (
       <YStack flex={1} ai="center" jc="center" backgroundColor={COLORS.cardBackground}>
         <Spinner size="large" color="$orange10" />
-        <Text mt="$2">Memuat data perusahaan...</Text>
+        <Text mt="$2">Memuat data role...</Text>
       </YStack>
     );
   }
 
   return (
     <YStack flex={1} backgroundColor={COLORS.cardBackground}>
-      <ListHeader title="Edit Profil Perusahaan" />
+      <ListHeader title="Edit Role" />
       <ScrollView style={{ flex: 1 }}>
         <YStack padding="$4" gap="$4">
           <Text color={COLORS.textSecondary} textAlign="center" fontSize={14}>
-            Perbarui informasi profil perusahaan di bawah ini.
+            Perbarui informasi role di bawah ini.
           </Text>
           
           {isUpdating && (
@@ -107,8 +90,8 @@ export default function EditCompanyProfilePage() {
           )}
 
           <DynamicFormRenderer 
-            schema={companyProfileSchema} 
-            initialValues={company?.data} 
+            schema={roleSchema} 
+            initialValues={role?.data} 
             onSubmit={handleSubmit} 
             onCancel={() => router.back()}
           />

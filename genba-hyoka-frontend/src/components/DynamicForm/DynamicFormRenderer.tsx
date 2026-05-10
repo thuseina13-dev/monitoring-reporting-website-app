@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useForm, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { YStack, Button, Text, XStack } from 'tamagui';
 import { FormSchema, FormField } from './types';
 import { FormComponentMap } from './FormComponentMap';
 import { useAuthStore, AuthState } from '../../store/authStore';
+
+import { COLORS } from '../../constants/theme';
 
 interface FieldRendererProps {
   field: FormField;
@@ -107,8 +109,12 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
             Batal
           </Button>
         )}
-        <Button theme="active" flex={1} onPress={handleSubmit(onSubmit || console.log)}>
-          Simpan Formulir
+        <Button 
+          backgroundColor={COLORS.primary} 
+          flex={1} 
+          onPress={handleSubmit(onSubmit || console.log)}
+        >
+          <Text color="white" fontWeight="700">Simpan Formulir</Text>
         </Button>
       </XStack>
     </YStack>

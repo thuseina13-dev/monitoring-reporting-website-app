@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, ModalProps, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { YStack, XStack, Text, Input, Button, View, Label } from 'tamagui';
 import { X, Eye, EyeOff, Lock, CheckCircle2, Circle } from '@tamagui/lucide-icons';
 import { useForm, Controller } from 'react-hook-form';
@@ -132,7 +132,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      borderColor={errors.new_password ? '#E74C3C' : COLORS.borderLight}
+                      borderColor={errors.new_password ? COLORS.danger : COLORS.borderLight}
                       focusStyle={{ borderColor: COLORS.primary }}
                       paddingRight={45}
                     />
@@ -150,14 +150,14 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                 )}
               />
               {errors.new_password && (
-                <Text fontSize={12} color="#E74C3C">
+                <Text fontSize={12} color={COLORS.danger}>
                   {errors.new_password.message}
                 </Text>
               )}
             </YStack>
 
             {/* Password Requirements Checklist */}
-            <YStack backgroundColor="#F8F9FA" padding="$3" borderRadius="$3" gap="$2">
+            <YStack backgroundColor={COLORS.bgSoft} padding="$3" borderRadius="$3" gap="$2">
               <Text fontSize={12} fontWeight="700" color={COLORS.textSecondary} marginBottom="$1">
                 Persyaratan Password:
               </Text>
@@ -196,7 +196,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      borderColor={errors.confirm_password ? '#E74C3C' : COLORS.borderLight}
+                      borderColor={errors.confirm_password ? COLORS.danger : COLORS.borderLight}
                       focusStyle={{ borderColor: COLORS.primary }}
                       paddingRight={45}
                     />
@@ -214,7 +214,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                 )}
               />
               {errors.confirm_password && (
-                <Text fontSize={12} color="#E74C3C">
+                <Text fontSize={12} color={COLORS.danger}>
                   {errors.confirm_password.message}
                 </Text>
               )}
@@ -223,11 +223,11 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
 
           {/* Warning for Super Admin */}
           {isSuperAdmin && (
-            <YStack backgroundColor="#FDEAEA" padding="$3" borderRadius="$3" gap="$2" borderWidth={1} borderColor="#F5B7B1">
-              <Text fontSize={13} color="#943126" fontWeight="bold">
+            <YStack backgroundColor={COLORS.dangerLight} padding="$3" borderRadius="$3" gap="$2" borderWidth={1} borderColor={COLORS.dangerBorder}>
+              <Text fontSize={13} color={COLORS.dangerDark} fontWeight="bold">
                 ⚠️ Akses Dibatasi
               </Text>
-              <Text fontSize={12} color="#943126" lineHeight={16}>
+              <Text fontSize={12} color={COLORS.dangerDark} lineHeight={16}>
                 Akun Master Sistem (Super Admin) tidak diperbolehkan mengganti password melalui fitur ini untuk menjaga integritas sistem.
               </Text>
             </YStack>

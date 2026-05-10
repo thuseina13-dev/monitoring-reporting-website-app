@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
-import { YStack, XStack, Text, View, Button } from 'tamagui';
+import { YStack, XStack, Text, View, Button, AlertDialog } from 'tamagui';
 import { ChevronDown, ChevronUp, Trash2 } from '@tamagui/lucide-icons';
 import { COLORS } from '../../constants/theme';
 
 export interface RoleCardProps {
+  id: string;
   name: string;
   code: string;
   description: string;
   isActive: boolean;
   type: string;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-const RoleCard: React.FC<RoleCardProps> = ({ name, code, description, isActive, type }) => {
+const RoleCard: React.FC<RoleCardProps> = ({ id, name, code, description, isActive, type, onEdit, onDelete }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const handleConfirmDelete = () => {
+    onDelete?.(id);
+    setIsDeleteDialogOpen(false);
+  };
 
   return (
     <YStack
@@ -34,12 +43,12 @@ const RoleCard: React.FC<RoleCardProps> = ({ name, code, description, isActive, 
 
         <XStack gap="$3" alignItems="center">
           <View
-            backgroundColor="#F1F3F5"
+            backgroundColor={COLORS.bgLight}
             paddingHorizontal="$3"
             paddingVertical="$1.5"
             borderRadius={20}
           >
-            <Text fontSize={12} fontWeight="700" color="#495057">
+            <Text fontSize={12} fontWeight="700" color={COLORS.textGray}>
               {type}
             </Text>
           </View>
@@ -53,7 +62,7 @@ const RoleCard: React.FC<RoleCardProps> = ({ name, code, description, isActive, 
 
       {isExpanded && (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4">
-          <YStack gap="$2" paddingTop="$3" borderTopWidth={1} borderTopColor="#F8F9FA">
+          <YStack gap="$2" paddingTop="$3" borderTopWidth={1} borderTopColor={COLORS.bgSoft}>
             <Text fontSize={13} fontWeight="700" color={COLORS.textSecondary}>
               Deskripsi:
             </Text>
@@ -69,7 +78,8 @@ const RoleCard: React.FC<RoleCardProps> = ({ name, code, description, isActive, 
               borderColor={COLORS.borderLight}
               height={36}
               paddingHorizontal="$6"
-              pressStyle={{ backgroundColor: '#F8F9FA' }}
+              pressStyle={{ backgroundColor: COLORS.bgSoft }}
+              onPress={() => onEdit?.(id)}
             >
               <Text fontSize={14} fontWeight="700" color={COLORS.textMain}>Edit</Text>
             </Button>
@@ -79,13 +89,57 @@ const RoleCard: React.FC<RoleCardProps> = ({ name, code, description, isActive, 
               circular
               backgroundColor="transparent"
               borderWidth={1}
-              borderColor="#E74C3C"
-              icon={<Trash2 size={18} color="#E74C3C" />}
-              pressStyle={{ backgroundColor: '#E74C3C1A' }}
+              borderColor={COLORS.danger}
+              icon={<Trash2 size={18} color={COLORS.danger} />}
+              pressStyle={{ backgroundColor: COLORS.transparent.danger }}
+              onPress={() => setIsDeleteDialogOpen(true)}
             />
           </XStack>
         </YStack>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay key="overlay" opacity={0.5} />
+          <AlertDialog.Content
+            bordered
+            elevate
+            key="content"
+            x={0}
+            scale={1}
+            opacity={1}
+            y={0}
+            maxWidth={400}
+            width="90%"
+            backgroundColor="white"
+            borderRadius={12}
+            padding="$5"
+          >
+            <YStack gap="$4">
+              <AlertDialog.Title fontSize={18} fontWeight="bold" color={COLORS.textMain}>
+                Hapus Role
+              </AlertDialog.Title>
+              <AlertDialog.Description fontSize={14} color={COLORS.textSecondary} lineHeight={20}>
+                Apakah Anda yakin ingin menghapus role &quot;{name}&quot;? Tindakan ini tidak dapat dibatalkan.
+              </AlertDialog.Description>
+
+              <XStack justifyContent="flex-end" marginTop="$2" gap="$2">
+                <AlertDialog.Cancel asChild>
+                  <Button variant="outlined" borderColor={COLORS.borderLight} backgroundColor="white">
+                    Batal
+                  </Button>
+                </AlertDialog.Cancel>
+                <AlertDialog.Action asChild onPress={handleConfirmDelete}>
+                  <Button backgroundColor={COLORS.danger}>
+                    <Text color="white" fontWeight="bold">Hapus</Text>
+                  </Button>
+                </AlertDialog.Action>
+              </XStack>
+            </YStack>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog>
     </YStack>
   );
 };

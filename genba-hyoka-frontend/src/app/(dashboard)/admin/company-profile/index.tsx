@@ -121,7 +121,7 @@ const CompanyListPage = () => {
                   </Button>
                 </AlertDialog.Cancel>
                 <AlertDialog.Action asChild onPress={confirmDelete}>
-                  <Button backgroundColor="#E74C3C">
+                  <Button backgroundColor={COLORS.danger}>
                     <Text color="white" fontWeight="bold">Hapus</Text>
                   </Button>
                 </AlertDialog.Action>

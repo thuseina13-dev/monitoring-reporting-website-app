@@ -12,6 +12,8 @@ import SignatureScreen, { SignatureViewRef } from 'react-native-signature-canvas
 import { Platform, ActivityIndicator } from 'react-native';
 import { storageService } from '../../services/api/storageService';
 
+import { COLORS } from '../../constants/theme';
+
 export interface FieldProps {
   fieldConfig: FormField;
   control: Control<any>;
@@ -228,7 +230,7 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
       </Label>
       <Button
-        icon={uploading ? () => <ActivityIndicator size="small" color="#fff" /> : FileUp}
+        icon={uploading ? () => <ActivityIndicator size="small" color={COLORS.textLight} /> : FileUp}
         onPress={pickDocument}
         disabled={fieldConfig.is_locked || uploading}
       >
@@ -347,23 +349,26 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, setValue })
     rules: fieldConfig.rules,
   });
 
-  const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
   const dataSource = fieldConfig.data_source;
   const dependsOnField = dataSource?.depends_on?.field;
   
+  const [options, setOptions] = useState<{ label: string; value: string }[]>(() => {
+    if (dataSource?.type === 'static') {
+      return dataSource.options || [];
+    }
+    return [];
+  });
+
   const parentValue = useWatch({
     control,
     name: dependsOnField || '____unused____',
   });
 
-  useEffect(() => {
-    if (dependsOnField) {
-      setValue(fieldConfig.id, '');
-    }
+  const prevParentValue = useRef(parentValue);
 
-    if (dataSource?.type === 'static') {
-      setOptions(dataSource.options || []);
-    } else if (dataSource?.type === 'dynamic') {
+  useEffect(() => {
+    // Logic fetch data untuk dynamic dropdown
+    if (dataSource?.type === 'dynamic') {
       if (dependsOnField && !parentValue) {
         setOptions([]);
         return;
@@ -392,7 +397,13 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, setValue })
 
       fetchOptions();
     }
-  }, [parentValue, dataSource, dependsOnField, fieldConfig.id, setValue]);
+
+    // Hanya reset value jika parentValue berubah (bukan saat mount)
+    if (dependsOnField && prevParentValue.current !== parentValue) {
+      setValue(fieldConfig.id, '');
+    }
+    prevParentValue.current = parentValue;
+  }, [parentValue, dependsOnField, fieldConfig.id, setValue]); 
 
   return (
     <YStack gap="$2" mb="$4">
@@ -400,7 +411,11 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, setValue })
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
       </Label>
-      <Select value={field.value || ''} onValueChange={field.onChange}>
+      <Select 
+        id={fieldConfig.id}
+        value={field.value || ''} 
+        onValueChange={field.onChange}
+      >
         <Select.Trigger iconAfter={ChevronDown} disabled={fieldConfig.is_locked}>
           <Select.Value placeholder="Pilih..." />
         </Select.Trigger>
@@ -419,7 +434,7 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, setValue })
         <Select.Content>
           <Select.Viewport>
             {options.map((opt, i) => (
-              <Select.Item index={i} key={opt.value} value={opt.value}>
+              <Select.Item index={i} key={`${opt.value}-${i}`} value={opt.value}>
                 <Select.ItemText>{opt.label}</Select.ItemText>
                 <Select.ItemIndicator>
                   <Check size={16} />
@@ -485,7 +500,7 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
       </Label>
       <Button
-        icon={uploading ? () => <ActivityIndicator size="small" color="#fff" /> : Camera}
+        icon={uploading ? () => <ActivityIndicator size="small" color={COLORS.textLight} /> : Camera}
         onPress={takePhoto}
         disabled={fieldConfig.is_locked || uploading}
       >

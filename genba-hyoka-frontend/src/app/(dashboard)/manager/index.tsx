@@ -69,7 +69,7 @@ export default function ManagerDashboard() {
             <StatCard
               title="Pending"
               value="3"
-              icon={<Clock size={20} color="#F59E0B" />}
+              icon={<Clock size={20} color={COLORS.warning} />}
             />
             <StatCard
               title="Kendala"
