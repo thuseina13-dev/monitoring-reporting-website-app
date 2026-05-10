@@ -20,18 +20,69 @@ export interface FieldProps {
   setValue: UseFormSetValue<any>;
 }
 
+const transformRules = (rules: any, label: string) => {
+  if (!rules) return {};
+  const transformed: any = {};
+  
+  if (rules.required) {
+    transformed.required = `${label} wajib diisi`;
+  }
+  
+  if (rules.max_length) {
+    transformed.maxLength = {
+      value: rules.max_length,
+      message: `${label} maksimal ${rules.max_length} karakter`
+    };
+  }
+  
+  if (rules.min_length) {
+    transformed.minLength = {
+      value: rules.min_length,
+      message: `${label} minimal ${rules.min_length} karakter`
+    };
+  }
+  
+  if (rules.min !== undefined) {
+    transformed.min = {
+      value: rules.min,
+      message: `${label} minimal ${rules.min}`
+    };
+  }
+  
+  if (rules.max !== undefined) {
+    transformed.max = {
+      value: rules.max,
+      message: `${label} maksimal ${rules.max}`
+    };
+  }
+
+  if (rules.pattern) {
+    transformed.pattern = {
+      value: new RegExp(rules.pattern),
+      message: `Format ${label} tidak valid`
+    };
+  }
+
+  return transformed;
+};
+
+const ErrorMessage = ({ error }: { error?: any }) => {
+  if (!error) return null;
+  return <Text color={COLORS.danger} fontSize={12} mt="$1">{error.message}</Text>;
+};
+
 const InputText: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
   return (
-    <YStack gap="$2" mb="$4">
-      <Label htmlFor={fieldConfig.id}>
+    <YStack gap="$1" mb="$4">
+      <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
+        {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
       <Input
         id={fieldConfig.id}
@@ -40,8 +91,9 @@ const InputText: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         onBlur={field.onBlur}
         disabled={fieldConfig.is_locked}
         placeholder={fieldConfig.label}
+        borderColor={fieldState.error ? COLORS.danger : undefined}
       />
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
+      <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
@@ -50,14 +102,14 @@ const InputTextArea: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
   return (
-    <YStack gap="$2" mb="$4">
-      <Label htmlFor={fieldConfig.id}>
+    <YStack gap="$1" mb="$4">
+      <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
+        {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
       <TextArea
         id={fieldConfig.id}
@@ -66,8 +118,9 @@ const InputTextArea: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         onBlur={field.onBlur}
         disabled={fieldConfig.is_locked}
         placeholder={fieldConfig.label}
+        borderColor={fieldState.error ? COLORS.danger : undefined}
       />
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
+      <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
@@ -76,14 +129,14 @@ const InputNumber: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
   return (
-    <YStack gap="$2" mb="$4">
-      <Label htmlFor={fieldConfig.id}>
+    <YStack gap="$1" mb="$4">
+      <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
+        {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
       <Input
         id={fieldConfig.id}
@@ -93,8 +146,9 @@ const InputNumber: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         keyboardType="numeric"
         disabled={fieldConfig.is_locked}
         placeholder={fieldConfig.label}
+        borderColor={fieldState.error ? COLORS.danger : undefined}
       />
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
+      <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
@@ -103,37 +157,25 @@ const InputDateTime: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
-
-  const [show, setShow] = useState(false);
-  const dateValue = field.value ? new Date(field.value) : new Date();
-
-  const onChange = (event: any, selectedDate?: Date) => {
-    setShow(Platform.OS === 'ios');
-    if (selectedDate) {
-      field.onChange(selectedDate.toISOString());
-    }
-  };
-
+...
   return (
-    <YStack gap="$2" mb="$4">
-      <Label htmlFor={fieldConfig.id}>
+    <YStack gap="$1" mb="$4">
+      <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
+        {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
-      <Button onPress={() => setShow(true)} disabled={fieldConfig.is_locked}>
+      <Button 
+        onPress={() => setShow(true)} 
+        disabled={fieldConfig.is_locked}
+        borderColor={fieldState.error ? COLORS.danger : undefined}
+        borderWidth={fieldState.error ? 1 : 0}
+      >
         {field.value ? new Date(field.value).toLocaleString() : 'Pilih Tanggal & Waktu'}
       </Button>
-      {show && (
-        <DateTimePicker
-          value={dateValue}
-          mode="datetime"
-          is24Hour={true}
-          onChange={onChange}
-        />
-      )}
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
+...
+      <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
@@ -167,20 +209,22 @@ const InputMap: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   };
 
   return (
-    <YStack gap="$2" mb="$4">
-      <Label htmlFor={fieldConfig.id}>
+    <YStack gap="$1" mb="$4">
+      <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
+        {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
       <Button
         icon={MapPin}
         onPress={getLocation}
         disabled={fieldConfig.is_locked || loading}
+        borderColor={fieldState.error ? COLORS.danger : undefined}
+        borderWidth={fieldState.error ? 1 : 0}
       >
         {loading ? 'Mengambil Lokasi...' : 'Dapatkan Lokasi'}
       </Button>
-      {field.value ? <Text color="$green10" fontSize="$2">Koordinat: {field.value}</Text> : null}
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
+      {field.value ? <Text color={COLORS.success} fontSize={12}>Koordinat: {field.value}</Text> : null}
+      <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
@@ -189,7 +233,7 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
   const [uploading, setUploading] = useState(false);
@@ -209,7 +253,6 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         setUploading(true);
         try {
           const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
-          // Simpan URL file yang dikembalikan dari backend
           field.onChange(uploadResult.data.file_url);
         } catch (error: any) {
           console.error('Upload failed:', error);
@@ -224,26 +267,28 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   };
 
   return (
-    <YStack gap="$2" mb="$4">
-      <Label htmlFor={fieldConfig.id}>
+    <YStack gap="$1" mb="$4">
+      <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
+        {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
       <Button
         icon={uploading ? () => <ActivityIndicator size="small" color={COLORS.textLight} /> : FileUp}
         onPress={pickDocument}
         disabled={fieldConfig.is_locked || uploading}
+        borderColor={fieldState.error ? COLORS.danger : undefined}
+        borderWidth={fieldState.error ? 1 : 0}
       >
         {uploading ? 'Mengunggah...' : 'Unggah File'}
       </Button>
       {field.value ? (
         <YStack mt="$2" p="$2" br="$2" bc="$backgroundHover">
-          <Text color="$green10" fontSize="$2" numberOfLines={1}>
+          <Text color={COLORS.success} fontSize={12} numberOfLines={1}>
             Terunggah: {field.value.split('/').pop()}
           </Text>
         </YStack>
       ) : null}
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
+      <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
@@ -252,7 +297,7 @@ const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
   const [open, setOpen] = useState(false);
@@ -264,20 +309,22 @@ const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   };
 
   return (
-    <YStack gap="$2" mb="$4">
-      <Label htmlFor={fieldConfig.id}>
+    <YStack gap="$1" mb="$4">
+      <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
+        {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
       <Button
         icon={PenTool}
         onPress={() => setOpen(true)}
         disabled={fieldConfig.is_locked}
+        borderColor={fieldState.error ? COLORS.danger : undefined}
+        borderWidth={fieldState.error ? 1 : 0}
       >
         Buka Pad Tanda Tangan
       </Button>
       
-      {field.value ? <Text color="$green10" fontSize="$2">Tanda tangan tersimpan</Text> : null}
+      {field.value ? <Text color={COLORS.success} fontSize={12}>Tanda tangan tersimpan</Text> : null}
 
       <Dialog modal open={open} onOpenChange={setOpen}>
         <Portal>
@@ -307,8 +354,7 @@ const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
           </Dialog.Content>
         </Portal>
       </Dialog>
-
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
+      <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
@@ -317,28 +363,31 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
   return (
-    <XStack gap="$3" ai="center" mb="$4">
-      <Checkbox
-        id={fieldConfig.id}
-        checked={field.value}
-        onCheckedChange={field.onChange}
-        disabled={fieldConfig.is_locked}
-        size="$5"
-      >
-        <Checkbox.Indicator>
-          <Check />
-        </Checkbox.Indicator>
-      </Checkbox>
-      <Label htmlFor={fieldConfig.id}>
-        {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
-      </Label>
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib dicentang'}</Text>}
-    </XStack>
+    <YStack gap="$1" mb="$4">
+      <XStack gap="$3" ai="center">
+        <Checkbox
+          id={fieldConfig.id}
+          checked={field.value}
+          onCheckedChange={field.onChange}
+          disabled={fieldConfig.is_locked}
+          size="$5"
+          borderColor={fieldState.error ? COLORS.danger : undefined}
+        >
+          <Checkbox.Indicator>
+            <Check />
+          </Checkbox.Indicator>
+        </Checkbox>
+        <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
+          {fieldConfig.label}
+          {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
+        </Label>
+      </XStack>
+      <ErrorMessage error={fieldState.error} />
+    </YStack>
   );
 };
 
@@ -346,7 +395,7 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, setValue })
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
   const dataSource = fieldConfig.data_source;
@@ -367,7 +416,6 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, setValue })
   const prevParentValue = useRef(parentValue);
 
   useEffect(() => {
-    // Logic fetch data untuk dynamic dropdown
     if (dataSource?.type === 'dynamic') {
       if (dependsOnField && !parentValue) {
         setOptions([]);
@@ -398,7 +446,6 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, setValue })
       fetchOptions();
     }
 
-    // Hanya reset value jika parentValue berubah (bukan saat mount)
     if (dependsOnField && prevParentValue.current !== parentValue) {
       setValue(fieldConfig.id, '');
     }
@@ -406,17 +453,21 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, setValue })
   }, [parentValue, dependsOnField, fieldConfig.id, setValue]); 
 
   return (
-    <YStack gap="$2" mb="$4">
-      <Label htmlFor={fieldConfig.id}>
+    <YStack gap="$1" mb="$4">
+      <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
+        {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
       <Select 
         id={fieldConfig.id}
         value={field.value || ''} 
         onValueChange={field.onChange}
       >
-        <Select.Trigger iconAfter={ChevronDown} disabled={fieldConfig.is_locked}>
+        <Select.Trigger 
+          iconAfter={ChevronDown} 
+          disabled={fieldConfig.is_locked}
+          borderColor={fieldState.error ? COLORS.danger : undefined}
+        >
           <Select.Value placeholder="Pilih..." />
         </Select.Trigger>
 
@@ -444,7 +495,7 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, setValue })
           </Select.Viewport>
         </Select.Content>
       </Select>
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib dipilih'}</Text>}
+      <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
@@ -453,7 +504,7 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
-    rules: fieldConfig.rules,
+    rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
   const [uploading, setUploading] = useState(false);
@@ -479,7 +530,6 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         setUploading(true);
         try {
           const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
-          // Simpan URL file yang dikembalikan dari backend
           field.onChange(uploadResult.data.file_url);
         } catch (error: any) {
           console.error('Upload failed:', error);
@@ -494,26 +544,28 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   };
 
   return (
-    <YStack gap="$2" mb="$4">
-      <Label htmlFor={fieldConfig.id}>
+    <YStack gap="$1" mb="$4">
+      <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
-        {fieldConfig.rules?.required && <Text color="$red10"> *</Text>}
+        {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
       <Button
         icon={uploading ? () => <ActivityIndicator size="small" color={COLORS.textLight} /> : Camera}
         onPress={takePhoto}
         disabled={fieldConfig.is_locked || uploading}
+        borderColor={fieldState.error ? COLORS.danger : undefined}
+        borderWidth={fieldState.error ? 1 : 0}
       >
         {uploading ? 'Mengunggah...' : 'Ambil Foto'}
       </Button>
       {field.value ? (
         <YStack mt="$2" p="$2" br="$2" bc="$backgroundHover">
-          <Text color="$green10" fontSize="$2" numberOfLines={1}>
+          <Text color={COLORS.success} fontSize={12} numberOfLines={1}>
             Foto tersimpan: {field.value.split('/').pop()}
           </Text>
         </YStack>
       ) : null}
-      {fieldState.error && <Text color="$red10">{fieldState.error.message || 'Wajib diisi'}</Text>}
+      <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };

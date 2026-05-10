@@ -54,7 +54,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, control, setValue 
   const Component = FormComponentMap[field.type];
 
   if (!Component) {
-    return <Text color="$red10">Unknown field type: {field.type}</Text>;
+    return <Text color={COLORS.danger}>Unknown field type: {field.type}</Text>;
   }
 
   return <Component fieldConfig={field} control={control} setValue={setValue} />;
