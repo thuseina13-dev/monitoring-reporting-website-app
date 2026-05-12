@@ -241,9 +241,9 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
     }
   )
 
-  // ── POST /users ─────────────────────────────────────────────
+  // ── POST /v1/users/register ────────────────────────────────
   .post(
-    '/',
+    '/register',
     async ({ body, set, currentUser }) => {
       const { fullName, email, password, roleIds, companyProfileId } = body;
 

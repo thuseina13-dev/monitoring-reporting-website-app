@@ -29,7 +29,7 @@ const testApp = new Elysia()
   // Route Group: Users
   .group('/v1/users', (app) =>
     app
-      .post('/', () => ({ message: 'User Created' }), {
+      .post('/register', () => ({ message: 'User Created' }), {
         beforeHandle: [rbac('USR', PERMISSION_BIT.CREATE)]
       })
   );
@@ -82,7 +82,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
   it('POST /v1/users > Harus 403 Forbidden untuk man & emp', async () => {
     // MAN (Forbidden)
     const resMan = await testApp.handle(
-      new Request('http://localhost/v1/users', { 
+      new Request('http://localhost/v1/users/register', { 
         method: 'POST', 
         headers: { Cookie: `access_token=man-token` } 
       })
@@ -91,7 +91,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
 
     // EMP (Forbidden)
     const resEmp = await testApp.handle(
-      new Request('http://localhost/v1/users', { 
+      new Request('http://localhost/v1/users/register', { 
         method: 'POST', 
         headers: { Cookie: `access_token=emp-token` } 
       })
@@ -100,7 +100,7 @@ describe('RBAC Integration Testing - Issue #33', () => {
 
     // SUP (Allowed)
     const resSup = await testApp.handle(
-      new Request('http://localhost/v1/users', { 
+      new Request('http://localhost/v1/users/register', { 
         method: 'POST', 
         headers: { Cookie: `access_token=sup-token` } 
       })

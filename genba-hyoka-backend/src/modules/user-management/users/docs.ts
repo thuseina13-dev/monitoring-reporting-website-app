@@ -101,7 +101,7 @@ export const getUserDocs = {
   },
 };
 
-// ── POST /users ─────────────────────────────────────────────
+// ── POST /v1/users/register ─────────────────────────────────
 export const registerUserDocs = {
   detail: {
     summary: 'Tambah Pengguna Baru',
