@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { YStack, XStack, Text, View, Button, Image } from 'tamagui';
 import { ChevronDown, ChevronUp, MapPin, Mail, Phone, Trash2, Users } from '@tamagui/lucide-icons';
 import { COLORS } from '../../constants/theme';
+import { ConfirmationDialog } from '../common/ConfirmationDialog';
 
 export interface CompanyCardProps {
   id: string;
@@ -12,10 +13,17 @@ export interface CompanyCardProps {
   phone?: string;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
+  isDeleting?: boolean;
 }
 
-const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, email, phone, onEdit, onDelete }) => {
+const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, email, phone, onEdit, onDelete, isDeleting = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const handleConfirmDelete = () => {
+    onDelete?.(id);
+    setIsDeleteDialogOpen(false);
+  };
 
   return (
     <YStack
@@ -121,11 +129,22 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, emai
               borderColor={COLORS.danger}
               icon={<Trash2 size={18} color={COLORS.danger} />}
               pressStyle={{ backgroundColor: COLORS.transparent.danger }}
-              onPress={() => onDelete?.(id)}
+              onPress={() => setIsDeleteDialogOpen(true)}
             />
           </XStack>
         </YStack>
       )}
+
+      <ConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Konfirmasi Hapus"
+        description="Apakah Anda yakin ingin menghapus profil perusahaan ini? Seluruh data terkait akan terpengaruh dan tindakan ini tidak dapat dibatalkan."
+        onConfirm={handleConfirmDelete}
+        confirmLabel="Hapus"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </YStack>
   );
 };

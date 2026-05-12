@@ -24,6 +24,8 @@ const ListHeader: React.FC<HeaderProps> = ({ title }) => {
       <Button
         icon={<ArrowLeft size={24} color={COLORS.textMain} />}
         circular
+        width={40}
+        height={40}
         backgroundColor="transparent"
         onPress={() => {
           if (router.canGoBack()) {
@@ -39,11 +41,12 @@ const ListHeader: React.FC<HeaderProps> = ({ title }) => {
         fontSize={18}
         fontWeight="bold"
         color={COLORS.textMain}
+        flex={1}
+        textAlign="center"
       >
         {title}
       </Text>
 
-      {/* Placeholder for symmetry */}
       <XStack width={40} />
     </XStack>
   );

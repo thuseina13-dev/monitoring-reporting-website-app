@@ -87,17 +87,11 @@ export default function CreateCompanyProfilePage() {
             Lengkapi data di bawah ini untuk mendaftarkan perusahaan baru.
           </Text>
           
-          {isPending && (
-            <YStack ai="center" jc="center" padding="$4">
-              <Spinner size="large" color="$orange10" />
-              <Text mt="$2">Sedang menyimpan...</Text>
-            </YStack>
-          )}
-
           <DynamicFormRenderer 
             schema={companyProfileSchema} 
             onSubmit={handleSubmit} 
             onCancel={() => router.back()}
+            isLoading={isPending}
           />
         </YStack>
       </ScrollView>

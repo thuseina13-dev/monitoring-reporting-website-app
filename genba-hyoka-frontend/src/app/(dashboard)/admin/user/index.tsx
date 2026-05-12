@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
+import { router } from 'expo-router';
 import BaseListScreen from '../../../../components/layout/BaseListScreen';
 import UserCard from '../../../../components/users/UserCard';
 import { useGetUsers } from '../../../../hooks/users/useGetUsers';
 import { ChangePasswordModal } from '../../../../components/auth/ChangePasswordModal';
+import { useDeleteUser } from '../../../../hooks/users/useDeleteUser';
+import { useUpdateUser } from '../../../../hooks/users/useUpdateUser';
 
 const UserListPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [targetUser, setTargetUser] = useState<{ id: string; name: string } | null>(null);
+
+  const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
+  const { mutate: updateUser, isPending: isUpdating } = useUpdateUser();
 
   // Mengambil data dari API dengan Infinite Query (Cursor-based)
   const { 
@@ -28,9 +34,15 @@ const UserListPage = () => {
   const users = data?.pages.flatMap(page => page.data) || [];
 
   const handleAddUser = () => {
-    console.log('Navigasi ke halaman tambah user...');
+    router.push('/admin/user/create');
+  };
+  const handleToggleStatus = (id: string, currentStatus: boolean) => {
+    updateUser({ id, data: { isActive: !currentStatus } });
   };
 
+  const handleDeleteUser = (id: string) => {
+    deleteUser(id);
+  };
 
   return (
     <>
@@ -59,8 +71,10 @@ const UserListPage = () => {
             email={userItem.email}
             phone={userItem.phoneNo}
             address={userItem.address}
-            onToggleStatus={() => console.log('Toggle status for', userItem.id)}
-            onDelete={() => console.log('Delete user', userItem.id)}
+            onToggleStatus={() => handleToggleStatus(userItem.id, userItem.isActive)}
+            onDelete={() => handleDeleteUser(userItem.id)}
+            isDeleting={isDeleting}
+            isUpdating={isUpdating}
             onResetPassword={(id) => {
               setTargetUser({ id, name: userItem.fullName });
               setIsChangePasswordOpen(true);

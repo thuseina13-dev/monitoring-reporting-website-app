@@ -101,6 +101,8 @@ function BaseListScreen<T>({
               onChangeText={setLocalSearch}
               height={45}
               focusStyle={{ borderWidth: 0, outlineWidth: 0 }}
+              autoComplete="off"
+              name="search-query"
             />
           </XStack>
           {customRightElement}

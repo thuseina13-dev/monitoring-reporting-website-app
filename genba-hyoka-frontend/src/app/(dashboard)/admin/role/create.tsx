@@ -70,17 +70,11 @@ export default function CreateRolePage() {
             Lengkapi data di bawah ini untuk membuat role baru.
           </Text>
           
-          {isPending && (
-            <YStack ai="center" jc="center" padding="$4">
-              <Spinner size="large" color="$orange10" />
-              <Text mt="$2">Sedang menyimpan...</Text>
-            </YStack>
-          )}
-
           <DynamicFormRenderer 
             schema={roleSchema} 
             onSubmit={handleSubmit} 
             onCancel={() => router.back()}
+            isLoading={isPending}
           />
         </YStack>
       </ScrollView>

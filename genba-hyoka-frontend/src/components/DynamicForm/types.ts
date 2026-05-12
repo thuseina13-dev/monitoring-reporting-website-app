@@ -8,7 +8,9 @@ export type FieldType =
   | 'file'
   | 'signature'
   | 'dropdown'
-  | 'checkbox';
+  | 'checkbox'
+  | 'radio'
+  | 'password';
 
 export interface ShowIfCondition {
   field: string;
@@ -33,6 +35,7 @@ export type DataSource =
       label_key: string;
       value_key: string;
       depends_on?: DataSourceDependsOn;
+      pagination?: 'cursor' | 'offset';
     };
 
 export interface FormFieldRules {
@@ -51,8 +54,16 @@ export interface FormField {
   rules?: FormFieldRules;
   show_if?: ShowIfCondition;
   data_source?: DataSource;
+  is_multiple?: boolean;
+  columns?: number;
+  icon_left?: string;
 }
 
 export interface FormSchema {
+  title?: string;
   fields: FormField[];
+  submit_label?: string;
+  hide_cancel?: boolean;
+  use_gradient?: boolean;
+  columns?: number;
 }

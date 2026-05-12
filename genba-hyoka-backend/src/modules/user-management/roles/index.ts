@@ -2,7 +2,7 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db';
 import { roles, userRoles, users } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, gt, asc, inArray, or, ilike, isNull } from 'drizzle-orm';
+import { eq, ne, and, count, gt, asc, or, ilike, isNull } from 'drizzle-orm';
 
 import { buildRQBWhere } from '../../../utils/filter';
 
@@ -27,7 +27,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   // ── GET /roles (Smart RQB) ──────────────────────────────────
   .get(
     '/',
-    async ({ query }) => {
+    async ({ query }: { query: any }) => {
       const includes = query.include ? query.include.split(',') : [];
       const includeUsers = includes.includes('users');
 
@@ -38,7 +38,10 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
       const filterOptions = {
         searchFields: ['name', 'code'],
         exactFields: ['type', 'code'],
-        customConditions: [isNull(roles.deletedAt)]
+        customConditions: [
+          isNull(roles.deletedAt),
+          ne(roles.type, 'super_admin')
+        ]
       };
 
       const roleList = await db.query.roles.findMany({
@@ -81,7 +84,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
         const [totalCount] = await db
           .select({ count: count() })
           .from(roles)
-          .where(buildRQBWhere(roles, { and, or, eq, ilike, gt }, query, filterOptions));
+          .where(buildRQBWhere(roles, { and, or, eq, ne, ilike, gt }, query, filterOptions));
         return Number(totalCount.count);
       });
 
@@ -96,7 +99,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
   // ── GET /roles/cursor (Infinite Scroll) ─────────────────────────
   .get(
     '/cursor',
-    async ({ query }) => {
+    async ({ query }: { query: any }) => {
       const includes = query.include ? query.include.split(',') : [];
       const includeUsers = includes.includes('users');
 
@@ -106,7 +109,10 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
       const filterOptions = {
         searchFields: ['name', 'code', 'description'],
         exactFields: ['type'],
-        customConditions: [isNull(roles.deletedAt)]
+        customConditions: [
+          isNull(roles.deletedAt),
+          ne(roles.type, 'super_admin')
+        ]
       };
 
       const roleList = await db.query.roles.findMany({

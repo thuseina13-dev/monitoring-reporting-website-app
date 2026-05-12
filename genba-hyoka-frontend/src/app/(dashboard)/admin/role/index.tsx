@@ -33,7 +33,7 @@ const RoleListPage = () => {
     limit: 10,
   });
 
-  const { mutate: deleteRole } = useDeleteRole();
+  const { mutate: deleteRole, isPending: isDeleting } = useDeleteRole();
 
   // Gabungkan data dari semua halaman (Infinite Data flattening)
   const roles = data?.pages.flatMap(page => page.data) || [];
@@ -130,6 +130,7 @@ const RoleListPage = () => {
           type={role.type ? role.type.charAt(0).toUpperCase() + role.type.slice(1) : '-'}
           onEdit={handleEditRole}
           onDelete={handleDeleteRole}
+          isDeleting={isDeleting}
         />
       )}
     />
