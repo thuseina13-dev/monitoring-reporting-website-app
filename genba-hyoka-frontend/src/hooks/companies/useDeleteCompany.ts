@@ -15,6 +15,7 @@ export const useDeleteCompany = () => {
       
       toast.show('Sukses', {
         message: 'Profil perusahaan berhasil dihapus.',
+        type: 'success',
         native: false,
       });
     },

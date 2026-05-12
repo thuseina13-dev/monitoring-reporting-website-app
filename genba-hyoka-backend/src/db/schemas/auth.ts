@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, integer, boolean, text, timestamp, pgEnum, index, uniqueIndex, unique } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, isNull } from 'drizzle-orm';
 import { auditColumns } from './_utils/audit';
 import { companyProfiles } from './company';
 
@@ -20,8 +20,8 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   fullName: varchar('full_name', { length: 255 }).notNull(),
   companyProfileId: uuid('company_profile_id'),
-  phoneNo: varchar('phone_no', { length: 25 }).unique(),
-  email: varchar('email', { length: 255 }).unique().notNull(),
+  phoneNo: varchar('phone_no', { length: 25 }),
+  email: varchar('email', { length: 255 }).notNull(),
   password: varchar('password', { length: 255 }).notNull(),
   address: varchar('address', { length: 255 }),
   gender: genderEnum('gender'),
@@ -31,6 +31,8 @@ export const users = pgTable('users', {
 }, (table) => ({
   fullNameIdx: index('full_name_idx').on(table.fullName),
   companyProfileIdIdx: index('company_profile_id_idx').on(table.companyProfileId),
+  emailUniqueIdx: uniqueIndex('users_email_unique_idx').on(table.email).where(isNull(table.deletedAt)),
+  phoneUniqueIdx: uniqueIndex('users_phone_unique_idx').on(table.phoneNo).where(isNull(table.deletedAt)),
 }));
 
 export const userRoles = pgTable('user_roles', {

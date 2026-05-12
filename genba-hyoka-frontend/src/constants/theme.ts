@@ -36,6 +36,8 @@ export const COLORS = {
   dangerBorder: '#F5B7B1',
 
   // Feedback States (Light variations)
+  primaryLight: '#DCFCE7',
+  warningLight: '#FEF9C3',
   dangerLight: '#FDEAEA',
   dangerDark: '#943126',
 

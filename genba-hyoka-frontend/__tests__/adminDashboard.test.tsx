@@ -1,29 +1,29 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import AdminDashboard from './index';
-import { useAuthStore } from '../../../store/authStore';
+import AdminDashboard from '../src/app/(dashboard)/admin/index';
+import { useAuthStore } from '../src/store/authStore';
 import { useRouter } from 'expo-router';
-import { authService } from '../../../services/api/authService';
-import { storage } from '../../../utils/storage';
+import { authService } from '../src/services/api/authService';
+import { storage } from '../src/utils/storage';
 import { TamaguiProvider } from 'tamagui';
-import tamaguiConfig from '../../../../tamagui.config'; // Assume reasonable path or simply mock tamagui
+import tamaguiConfig from '../tamagui.config'; // Assume reasonable path or simply mock tamagui
 
 // Mock dependencies
 jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
 }));
 
-jest.mock('../../../store/authStore', () => ({
+jest.mock('../src/store/authStore', () => ({
   useAuthStore: jest.fn(),
 }));
 
-jest.mock('../../../services/api/authService', () => ({
+jest.mock('../src/services/api/authService', () => ({
   authService: {
     logout: jest.fn(),
   },
 }));
 
-jest.mock('../../../utils/storage', () => ({
+jest.mock('../src/utils/storage', () => ({
   storage: {
     getItem: jest.fn(),
   },

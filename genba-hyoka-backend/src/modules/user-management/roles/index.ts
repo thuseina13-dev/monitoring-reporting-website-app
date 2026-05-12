@@ -204,8 +204,8 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
     async ({ body, currentUser, set }) => {
       const { code, name, type, description } = body;
 
-      const [existing] = await db.select({ id: roles.id }).from(roles).where(and(eq(roles.code, code), isNull(roles.deletedAt))).limit(1);
-      if (existing) throw new AppError(400, 'Kode role sudah terdaftar.');
+      const [existing] = await db.select({ id: roles.id }).from(roles).where(eq(roles.code, code)).limit(1);
+      if (existing) throw new AppError(400, 'Kode role sudah terdaftar (termasuk role non-aktif).');
 
       const newRole = await db.transaction(async (tx) => {
         const [inserted] = await tx

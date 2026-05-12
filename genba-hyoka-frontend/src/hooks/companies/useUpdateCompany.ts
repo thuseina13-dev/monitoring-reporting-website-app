@@ -1,8 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '../../services/api/companyService';
-import { router } from 'expo-router';
 import { useToastController } from '@tamagui/toast';
-
 import { parseBackendError } from '../../utils/errorParser';
 
 export const useUpdateCompany = () => {
@@ -16,10 +14,9 @@ export const useUpdateCompany = () => {
       
       toast.show('Sukses', {
         message: 'Profil perusahaan berhasil diperbarui.',
+        type: 'success',
         native: false,
       });
-
-      router.back();
     },
     onError: (error: any) => {
       console.error('Failed to update company:', error);

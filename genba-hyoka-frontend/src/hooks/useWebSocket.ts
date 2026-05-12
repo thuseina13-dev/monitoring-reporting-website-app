@@ -13,29 +13,29 @@ export const useWebSocket = () => {
   const pingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconnectDelay = useRef(INITIAL_RECONNECT_DELAY);
   const isConnecting = useRef(false);
-  
+
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { setStatus, setChannels, setLastMessage } = useWSStore.getState();
 
   const disconnect = useCallback((reason: string) => {
     // Kita gunakan console.log biasa sekarang karena sudah stabil
     console.log(`[WS] Disconnecting. Reason: ${reason}`);
-    
+
     if (pingInterval.current) clearInterval(pingInterval.current);
     if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
-    
+
     if (ws.current) {
       ws.current.onopen = null;
       ws.current.onmessage = null;
       ws.current.onclose = null;
       ws.current.onerror = null;
-      
+
       if (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING) {
         ws.current.close(1000, reason);
       }
       ws.current = null;
     }
-    
+
     setStatus('CLOSED');
   }, [setStatus]);
 
@@ -43,25 +43,25 @@ export const useWebSocket = () => {
     if (ws.current?.readyState === WebSocket.OPEN || ws.current?.readyState === WebSocket.CONNECTING) {
       return;
     }
-    
+
     if (!isAuthenticated || isConnecting.current) return;
 
     isConnecting.current = true;
     setStatus('CONNECTING');
-    
+
     try {
       console.log('[WS] Requesting ticket...');
       const { ticket_id } = await wsService.getTicket();
-      
+
       if (!useAuthStore.getState().isAuthenticated) {
         isConnecting.current = false;
         return;
       }
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
+      const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}/${process.env.EXPO_PUBLIC_API_VERSION}`
       const wsBaseUrl = apiUrl.replace(/^http/, 'ws');
       const wsUrl = `${wsBaseUrl}/ws/connect?ticket=${ticket_id}`;
-      
+
       console.log('[WS] Opening WebSocket...');
       const socket = new WebSocket(wsUrl);
       ws.current = socket;
@@ -71,7 +71,7 @@ export const useWebSocket = () => {
         setStatus('OPEN');
         reconnectDelay.current = INITIAL_RECONNECT_DELAY;
         isConnecting.current = false;
-        
+
         if (pingInterval.current) clearInterval(pingInterval.current);
         pingInterval.current = setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
@@ -86,7 +86,7 @@ export const useWebSocket = () => {
           const message = JSON.parse(event.data);
           if (message.type === 'WELCOME') setChannels(message.data.channels);
           setLastMessage(message);
-        } catch (e) {}
+        } catch (e) { }
       };
 
       socket.onclose = (event) => {

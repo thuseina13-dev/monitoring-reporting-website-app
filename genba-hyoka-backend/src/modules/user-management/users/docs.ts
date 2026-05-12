@@ -2,6 +2,7 @@ import { t } from 'elysia';
 import { errorSchema, successResponse, successListResponse, paginatedResponse, errorResponses } from '../../../utils/schema';
 
 const companyProfileNested = t.Object({
+  id: t.String(),
   name: t.String(),
   desc: t.Union([t.String(), t.Null()]),
   address: t.Union([t.String(), t.Null()]),
@@ -11,6 +12,7 @@ const companyProfileNested = t.Object({
 });
 
 const roleNested = t.Object({
+  id: t.String(),
   code: t.String(),
   name: t.String(),
   type: t.Union([t.String(), t.Null()]),
@@ -25,6 +27,7 @@ const userResponseSchema = t.Object({
   address: t.Union([t.String(), t.Null()]),
   gender: t.Union([t.String(), t.Null()]),
   isActive: t.Boolean(),
+  photoProfile: t.Union([t.String(), t.Null()]),
   companyProfileId: t.Union([t.String(), t.Null()]),
   companyPartner: t.Optional(t.Union([companyProfileNested, t.Null()])),
   roles: t.Optional(t.Array(roleNested)),
@@ -142,6 +145,7 @@ export const updateUserDocs = {
     address: t.Optional(t.String()),
     gender: t.Optional(t.Union([t.Literal('male'), t.Literal('female')])),
     isActive: t.Optional(t.Boolean()),
+    photoProfile: t.Optional(t.Union([t.String(), t.Null()])),
     companyProfileId: t.Optional(t.Union([t.String({ format: 'uuid' }), t.Null()])),
     roleIds: t.Optional(t.Array(t.String({ format: 'uuid' }))),
   }),

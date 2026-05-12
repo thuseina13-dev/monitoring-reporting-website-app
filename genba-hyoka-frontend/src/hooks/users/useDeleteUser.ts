@@ -13,6 +13,7 @@ export const useDeleteUser = () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.show('Sukses', {
         message: 'User berhasil dihapus.',
+        type: 'success',
         native: false,
       });
     },

@@ -26,7 +26,7 @@ export const storageService = {
     formData.append('model_name', modelName);
     formData.append('is_public', String(isPublic));
 
-    const response = await axiosClient.post('/v1/upload', formData, {
+    const response = await axiosClient.post('/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

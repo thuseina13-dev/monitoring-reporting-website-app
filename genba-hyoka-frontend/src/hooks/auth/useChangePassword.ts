@@ -13,6 +13,7 @@ export const useChangePassword = () => {
     onSuccess: (data) => {
       toast.show('Sukses', {
         message: data.message || 'Password berhasil diperbarui.',
+        type: 'success',
         native: false,
       });
     },

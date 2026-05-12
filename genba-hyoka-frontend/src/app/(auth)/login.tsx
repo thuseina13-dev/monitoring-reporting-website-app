@@ -16,6 +16,8 @@ import LogoTumpuk from '../../assets/images/logo-tumpuk-compress-removebg-previe
 import { DynamicFormRenderer } from '../../components/DynamicForm/DynamicFormRenderer';
 import { FormSchema } from '../../components/DynamicForm/types';
 
+import { parseBackendError } from '../../utils/errorParser';
+
 export default function LoginScreen() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -49,7 +51,7 @@ export default function LoginScreen() {
       router.replace('/(dashboard)' as any);
     },
     onError: (error: any) => {
-      const msg = error.response?.data?.message || 'Email atau password salah';
+      const msg = parseBackendError(error);
       toast.show('Login Gagal', {
         message: msg,
         type: 'error',

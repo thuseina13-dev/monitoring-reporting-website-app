@@ -29,6 +29,7 @@ const userPublicFields = {
   address: users.address,
   gender: users.gender,
   isActive: users.isActive,
+  photoProfile: users.photoProfile,
   companyProfileId: users.companyProfileId,
 };
 
@@ -79,7 +80,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
               with: {
                 role: {
                   columns: {
-                    id: false,
+                    id: true,
                     code: true,
                     name: true,
                     type: true,
@@ -154,7 +155,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
           }),
           ...(includeRoles && {
             userRoles: {
-              with: { role: { columns: { id: false, code: true, name: true, type: true, description: true } } }
+              with: { role: { columns: { id: true, code: true, name: true, type: true, description: true } } }
             }
           })
         }
@@ -207,7 +208,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
               with: {
                 role: {
                   columns: {
-                    id: false,
+                    id: true,
                     code: true,
                     name: true,
                     type: true,
@@ -248,7 +249,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
       const { fullName, email, password, roleIds, companyProfileId } = body;
 
       const [existing] = await db.select({ id: users.id }).from(users).where(and(eq(users.email, email), isNull(users.deletedAt))).limit(1);
-      if (existing) throw new AppError(400, 'Email sudah terdaftar.');
+      if (existing) throw new AppError(400, 'Email sudah terdaftar dan masih aktif.');
 
       const hashedPassword = await Bun.password.hash(password);
 
@@ -313,11 +314,12 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         if (body.address !== undefined) updateData.address = body.address;
         if (body.gender !== undefined) updateData.gender = body.gender;
         if (body.isActive !== undefined) updateData.isActive = body.isActive;
+        if (body.photoProfile !== undefined) updateData.photoProfile = body.photoProfile;
         if (body.companyProfileId !== undefined) updateData.companyProfileId = body.companyProfileId;
         if (body.password) updateData.password = await Bun.password.hash(body.password);
         
         if (body.email) {
-          const [conflict] = await tx.select({ id: users.id }).from(users).where(eq(users.email, body.email)).limit(1);
+          const [conflict] = await tx.select({ id: users.id, active: users.isActive }).from(users).where(and(eq(users.email, body.email),eq(users.isActive, true))).limit(1);
           if (conflict && conflict.id !== params.id) throw new AppError(400, 'Email sudah digunakan.');
           updateData.email = body.email;
         }

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { YStack, XStack, Text, View, Button } from 'tamagui';
+import { YStack, XStack, Text, View, Button, Image } from 'tamagui';
+import { router } from 'expo-router';
 import { ChevronDown, ChevronUp, Mail, Smartphone, MapPinned, Edit3, Key, Power, Trash2 } from '@tamagui/lucide-icons';
 import { COLORS } from '../../constants/theme';
 import { ConfirmationDialog } from '../common/ConfirmationDialog';
+import { getImageUrl } from '@/utils/getImageUrl';
 
 export interface UserCardProps {
   id: string;
@@ -13,6 +15,7 @@ export interface UserCardProps {
   email?: string;
   phone?: string;
   address?: string;
+  photoProfile?: string | null;
   onToggleStatus?: () => void;
   onDelete?: () => void;
   onResetPassword?: (id: string) => void;
@@ -20,7 +23,7 @@ export interface UserCardProps {
   isUpdating?: boolean;
 }
 
-const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, email, phone, address, onToggleStatus, onDelete, onResetPassword, isDeleting = false, isUpdating = false }) => {
+const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, email, phone, address, photoProfile, onToggleStatus, onDelete, onResetPassword, isDeleting = false, isUpdating = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [dialogConfig, setDialogConfig] = useState<{ isOpen: boolean, type: 'status' | 'delete' | null }>({ isOpen: false, type: null });
 
@@ -67,8 +70,13 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
             justifyContent="center"
             borderWidth={1}
             borderColor={COLORS.borderLight}
+            overflow="hidden"
           >
-            <Text fontSize={14} fontWeight="700" color={COLORS.textMain}>{initials}</Text>
+            {photoProfile ? (
+              <Image src={getImageUrl(photoProfile)} width="100%" height="100%"/>
+            ) : (
+              <Text fontSize={14} fontWeight="700" color={COLORS.textMain}>{initials}</Text>
+            )}
           </View>
 
           <YStack flex={1}>
@@ -121,7 +129,11 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
 
           <XStack gap="$2" justifyContent="space-between" alignItems="center">
             <XStack gap="$2" flex={1}>
-              <ActionButton icon={<Edit3 size={14} />} label="Edit" />
+              <ActionButton 
+                icon={<Edit3 size={14} />} 
+                label="Edit" 
+                onPress={() => router.push(`/admin/user/edit/${id}`)}
+              />
               <ActionButton 
                 icon={<Key size={14} />} 
                 label="Reset Sandi" 

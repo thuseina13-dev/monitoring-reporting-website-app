@@ -3,6 +3,7 @@ import { YStack, XStack, Text, View, Button, Image } from 'tamagui';
 import { ChevronDown, ChevronUp, MapPin, Mail, Phone, Trash2, Users } from '@tamagui/lucide-icons';
 import { COLORS } from '../../constants/theme';
 import { ConfirmationDialog } from '../common/ConfirmationDialog';
+import { getImageUrl } from '@/utils/getImageUrl';
 
 export interface CompanyCardProps {
   id: string;
@@ -47,7 +48,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, emai
             borderColor={COLORS.borderMedium}
           >
             {logo && typeof logo === 'string' && logo.trim().length > 0 ? (
-              <Image source={{ uri: logo }} width="100%" height="100%" />
+              <Image src={getImageUrl(logo)} width="100%" height="100%" />
             ) : (
               <XStack alignItems="center" justifyContent="center" flex={1}>
                 <Users size={26} color={COLORS.primary} />
@@ -96,18 +97,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ id, name, address, logo, emai
           </YStack>
 
           <XStack justifyContent="space-between" alignItems="center" paddingTop="$2" gap="$2">
-            <XStack gap="$2" flex={1}>
-              <Button
-                backgroundColor="white"
-                borderWidth={1}
-                borderColor={COLORS.primary}
-                height={40}
-                paddingHorizontal="$3"
-                pressStyle={{ backgroundColor: COLORS.transparent.primary }}
-                icon={<Users size={16} color={COLORS.primary} />}
-              >
-                <Text fontSize={13} fontWeight="700" color={COLORS.primary}>Lihat Daftar User</Text>
-              </Button>
+            <XStack gap="$2" flex={1}>           
               <Button
                 backgroundColor="white"
                 borderWidth={1}

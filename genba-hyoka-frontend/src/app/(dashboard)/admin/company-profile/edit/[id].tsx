@@ -39,6 +39,7 @@ const companyProfileSchema: FormSchema = {
       id: "logo",
       label: "Logo Perusahaan",
       type: "file",
+      show_preview: true,
       rules: {
         max_size_mb: 1,
         allowed_extensions: [".jpg", ".jpeg", ".png"],
@@ -78,7 +79,12 @@ export default function EditCompanyProfilePage() {
       logo: typeof data.logo === 'string' ? data.logo : '', 
     };
 
-    updateCompany({ id, data: payload });
+    updateCompany({ id, data: payload }, {
+      onSuccess: () => {
+        // Redirect tegas ke halaman list setelah sukses
+        router.replace('/(dashboard)/admin/company-profile');
+      }
+    });
   };
 
   if (isLoadingData) {

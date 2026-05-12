@@ -13,6 +13,7 @@ export const useUpdateUser = () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.show('Sukses', {
         message: 'Data user berhasil diperbarui.',
+        type: 'success',
         native: false,
       });
     },

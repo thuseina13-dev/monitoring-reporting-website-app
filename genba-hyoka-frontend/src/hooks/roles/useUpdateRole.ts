@@ -17,6 +17,7 @@ export const useUpdateRole = () => {
       
       toast.show('Sukses', {
         message: 'Role berhasil diperbarui.',
+        type: 'success',
         native: false,
       });
 

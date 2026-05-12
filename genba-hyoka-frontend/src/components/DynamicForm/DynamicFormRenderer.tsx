@@ -2,11 +2,12 @@ import React from 'react';
 import { useForm, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { YStack, Button, Text, XStack, Spinner } from 'tamagui';
 import { LinearGradient } from 'tamagui/linear-gradient';
-import { FormSchema, FormField } from './types';
+import { FormSchema, FormField, FormSection } from './types';
 import { FormComponentMap } from './FormComponentMap';
 import { useAuthStore, AuthState } from '../../store/authStore';
-
 import { COLORS } from '../../constants/theme';
+import { storageService } from '../../services/api/storageService';
+import { parseBackendError } from '../../utils/errorParser';
 
 interface FieldRendererProps {
   field: FormField;
@@ -87,7 +88,8 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
         val = today.toISOString().split('T')[0];
       }
     }
-    defaultValues[field.id] = val ?? '';
+    const isArrayField = field.type === 'checkbox' || field.is_multiple;
+    defaultValues[field.id] = val ?? (isArrayField ? [] : '');
   });
 
   const { control, handleSubmit, setValue } = useForm({
@@ -99,6 +101,33 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
   const hideCancel = schema.hide_cancel || false;
   const columns = schema.columns || 1;
 
+  const [isUploading, setIsUploading] = React.useState(false);
+
+  const handleFinalSubmit = async (data: any) => {
+    setIsUploading(true);
+    try {
+      const finalData = { ...data };
+      
+      // Look for any fields that are file objects
+      for (const key of Object.keys(finalData)) {
+        const value = finalData[key];
+        if (value && typeof value === 'object' && value.isFileObject) {
+          const uploadResult = await storageService.upload(value.uri, value.modelName, value.isPublic);
+          finalData[key] = uploadResult.data.file_url;
+        }
+      }
+      
+      if (onSubmit) {
+        onSubmit(finalData);
+      }
+    } catch (error: any) {
+      console.error('Upload failed during submit:', error);
+      alert('Gagal mengunggah file: ' + parseBackendError(error));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <YStack gap="$2" padding="$4" backgroundColor="transparent">
       {schema.title && (
@@ -107,22 +136,57 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
         </YStack>
       )}
 
-      <XStack fw="wrap" jc="flex-start" gap="$3">
-        {schema.fields.map((field) => (
-          <YStack 
-            key={field.id} 
-            width={columns > 1 ? `calc(${100 / columns}% - 12px)` : '100%'}
-            minWidth={columns > 1 ? 300 : '100%'}
-            flexGrow={1}
-          >
-            <FieldRenderer
-              field={field}
-              control={control}
-              setValue={setValue}
-            />
-          </YStack>
-        ))}
-      </XStack>
+      {schema.sections && schema.sections.length > 0 ? (
+        <XStack fw="wrap" gap="$4">
+          {schema.sections.map((section, sIdx) => {
+            const sectionFields = section.field_ids
+              .map(id => schema.fields.find(f => f.id === id))
+              .filter(Boolean) as FormField[];
+            
+            const sectionColumns = schema.columns || 1;
+            
+            return (
+              <YStack 
+                key={sIdx} 
+                flex={1} 
+                minWidth={300} 
+                gap="$3"
+              >
+                {section.title && (
+                  <Text fontSize={16} fontWeight="700" color={COLORS.textSecondary} mb="$2" borderBottomWidth={1} borderBottomColor={COLORS.borderSeparator} pb="$2">
+                    {section.title}
+                  </Text>
+                )}
+                {sectionFields.map((field) => (
+                  <FieldRenderer
+                    key={field.id}
+                    field={field}
+                    control={control}
+                    setValue={setValue}
+                  />
+                ))}
+              </YStack>
+            );
+          })}
+        </XStack>
+      ) : (
+        <XStack fw="wrap" jc="flex-start" gap="$3">
+          {schema.fields.map((field) => (
+            <YStack 
+              key={field.id} 
+              width={columns > 1 ? `calc(${100 / columns}% - 12px)` : '100%'}
+              minWidth={columns > 1 ? 300 : '100%'}
+              flexGrow={1}
+            >
+              <FieldRenderer
+                field={field}
+                control={control}
+                setValue={setValue}
+              />
+            </YStack>
+          ))}
+        </XStack>
+      )}
       
       <XStack gap="$3" marginTop="$4">
         {onCancel && !hideCancel && (
@@ -134,9 +198,9 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
           backgroundColor={schema.use_gradient ? 'transparent' : COLORS.primary} 
           flex={1} 
           height={55}
-          onPress={handleSubmit(onSubmit || console.log)}
-          disabled={isLoading}
-          opacity={isLoading ? 0.7 : 1}
+          onPress={handleSubmit(handleFinalSubmit)}
+          disabled={isLoading || isUploading}
+          opacity={(isLoading || isUploading) ? 0.7 : 1}
           pressStyle={{ opacity: 0.8 }}
           overflow="hidden"
           position="relative"
@@ -152,7 +216,7 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
             />
           )}
           <XStack ai="center" jc="center" gap="$2" f={1} w="100%" h="100%" zIndex={1}>
-            {isLoading ? (
+            {(isLoading || isUploading) ? (
               <Spinner color="white" />
             ) : (
               <Text color="white" fontSize={16} fontWeight="800">{submitLabel.toUpperCase()}</Text>

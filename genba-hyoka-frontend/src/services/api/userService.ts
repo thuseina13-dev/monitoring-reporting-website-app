@@ -21,6 +21,10 @@ export const userService = {
     const response = await axiosClient.post('/users/register', data);
     return response.data;
   },
+  getUser: async (id: string, params: any = {}) => {
+    const response = await axiosClient.get(`/users/${id}`, { params });
+    return response.data;
+  },
   updateUser: async (id: string, data: any) => {
     const response = await axiosClient.put(`/users/${id}`, data);
     return response.data;

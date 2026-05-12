@@ -7,7 +7,17 @@ import { AppError } from '../utils/AppError';
  */
 export const errorHandler = (app: Elysia) => 
   app.onError(({ code, error, set }) => {
-    // 1. Handle custom AppError (Gunakan nama class jika instanceof gagal krn bundling/test)
+    // 1. Handle Database errors (Postgres) - prioritized
+    const dbError = (error as any).cause || error;
+    if (dbError && typeof dbError === 'object' && 'severity' in dbError && 'code' in dbError) {
+      set.status = 400;
+      return {
+        success: false,
+        message: (dbError.detail || dbError.message || 'Database error').replace('Key ', '').replace(/\(|\)/g, ''),
+      };
+    }
+
+    // 2. Handle custom AppError
     if (error instanceof AppError || (error as any).statusCode) {
       const statusCode = (error as any).statusCode || 500;
       set.status = statusCode;
@@ -17,7 +27,7 @@ export const errorHandler = (app: Elysia) =>
       };
     }
 
-    // 2. Handle Elysia internal error codes (cast to string to avoid union narrowing issues)
+    // 3. Handle Elysia internal error codes (cast to string to avoid union narrowing issues)
     switch (code as string) {
       case 'VALIDATION':
         set.status = 422;

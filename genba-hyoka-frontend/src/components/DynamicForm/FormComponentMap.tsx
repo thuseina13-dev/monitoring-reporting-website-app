@@ -2,18 +2,19 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useController, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { FormField } from './types';
-import { Input, YStack, Text, Label, Select, Adapt, Sheet, Button, TextArea, Checkbox, XStack, Dialog, Portal, RadioGroup } from 'tamagui';
-import { ChevronDown, Check, Camera, MapPin, FileUp, PenTool, X, Eye, EyeOff, Mail, Lock, User, Smartphone } from '@tamagui/lucide-icons';
+import { Input, YStack, Text, Label, Select, Adapt, Sheet, Button, TextArea, Checkbox, XStack, Dialog, Portal, RadioGroup, Switch } from 'tamagui';
+import { ChevronDown, Check, Camera, MapPin, FileUp, PenTool, X, Eye, EyeOff, Mail, Lock, User, Smartphone, Download, Image as ImageIcon } from '@tamagui/lucide-icons';
 import axiosClient from '../../services/api/axiosClient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Location from 'expo-location';
 import SignatureScreen, { SignatureViewRef } from 'react-native-signature-canvas';
-import { Platform, ActivityIndicator } from 'react-native';
+import { Platform, ActivityIndicator, Image, Linking } from 'react-native';
 import { storageService } from '../../services/api/storageService';
 
 import { COLORS } from '../../constants/theme';
+import { getImageUrl } from '@/utils/getImageUrl';
 
 export interface FieldProps {
   fieldConfig: FormField;
@@ -24,32 +25,32 @@ export interface FieldProps {
 const transformRules = (rules: any, label: string) => {
   if (!rules) return {};
   const transformed: any = {};
-  
+
   if (rules.required) {
     transformed.required = `${label} wajib diisi`;
   }
-  
+
   if (rules.max_length) {
     transformed.maxLength = {
       value: rules.max_length,
       message: `${label} maksimal ${rules.max_length} karakter`
     };
   }
-  
+
   if (rules.min_length) {
     transformed.minLength = {
       value: rules.min_length,
       message: `${label} minimal ${rules.min_length} karakter`
     };
   }
-  
+
   if (rules.min !== undefined) {
     transformed.min = {
       value: rules.min,
       message: `${label} minimal ${rules.min}`
     };
   }
-  
+
   if (rules.max !== undefined) {
     transformed.max = {
       value: rules.max,
@@ -236,8 +237,8 @@ const InputDateTime: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
-      <Button 
-        onPress={() => setShow(true)} 
+      <Button
+        onPress={() => setShow(true)}
         disabled={fieldConfig.is_locked}
         borderColor={fieldState.error ? COLORS.danger : undefined}
         borderWidth={fieldState.error ? 1 : 0}
@@ -306,6 +307,62 @@ const InputMap: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   );
 };
 
+const PreviewDialog = ({ open, setOpen, uri }: { open: boolean, setOpen: (val: boolean) => void, uri: string }) => {
+  return (
+    <Dialog modal open={open} onOpenChange={setOpen}>
+      <Portal>
+        <Dialog.Overlay key="overlay" opacity={0.6} backgroundColor="#000" />
+        <Dialog.Content
+          bordered
+          elevate
+          key="content"
+          width="auto"
+          maxWidth="95%"
+          height="auto"
+          maxHeight="95%"
+          padding="$0"
+          overflow="hidden"
+          backgroundColor="$background"
+          borderRadius="$4"
+          // Centering Logic
+          alignSelf="center"
+          top={0}
+          bottom={0}
+          left={0}
+          right={0}
+          margin="auto"
+          x={0}
+          y={0}
+          opacity={1}
+          scale={1}
+          enterStyle={{ x: 0, y: -20, opacity: 0, scale: 0.9 }}
+          exitStyle={{ x: 0, y: 10, opacity: 0, scale: 0.95 }}
+        >
+          <XStack padding="$3" borderBottomWidth={1} borderColor={COLORS.borderLight || "$borderColor"} jc="space-between" ai="center" backgroundColor={COLORS.bgSoft || "$backgroundHover"}>
+            <Dialog.Title margin={0} fontSize={16} fontWeight="bold" color={COLORS.textMain || "$color"}>Pratinjau Gambar</Dialog.Title>
+            <Button size="$3" circular chromeless icon={<X color={COLORS.textMuted || "$color"} />} onPress={() => setOpen(false)} />
+          </XStack>
+
+          <YStack ai="center" jc="center" padding="$2" backgroundColor={COLORS.bgSoft || "$backgroundHover"}>
+            {!!uri && (
+              <Image
+                source={{ uri }}
+                style={{
+                  width: 500,
+                  height: 500,
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  resizeMode: 'contain'
+                }}
+              />
+            )}
+          </YStack>
+        </Dialog.Content>
+      </Portal>
+    </Dialog>
+  );
+};
+
 const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
@@ -314,6 +371,24 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   });
 
   const [uploading, setUploading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const handlePreviewAction = () => {
+    if (!field.value) return;
+    const isObj = field.value && typeof field.value === 'object' && field.value.isFileObject;
+    const uri = isObj ? field.value.uri : field.value;
+    const type = isObj ? field.value.type : (uri.match(/\.(jpeg|jpg|gif|png)$/i) ? 'image/jpeg' : 'application/octet-stream');
+
+    if (type && type.startsWith('image')) {
+      setPreviewOpen(true);
+    } else {
+      const fullUrl = uri.startsWith('http') || uri.startsWith('data:') || uri.startsWith('file:')
+        ? uri
+        : getImageUrl(uri);
+        console.log('full url', fullUrl)
+      Linking.openURL(fullUrl);
+    }
+  };
 
   const pickDocument = async () => {
     try {
@@ -327,16 +402,14 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         const modelName = fieldConfig.rules?.model_name || 'general';
         const isPublic = fieldConfig.rules?.is_public === true;
 
-        setUploading(true);
-        try {
-          const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
-          field.onChange(uploadResult.data.file_url);
-        } catch (error: any) {
-          console.error('Upload failed:', error);
-          alert('Gagal mengunggah file: ' + (error.response?.data?.message || error.message));
-        } finally {
-          setUploading(false);
-        }
+        field.onChange({
+          uri: asset.uri,
+          name: asset.name || 'upload.pdf',
+          type: asset.mimeType || 'application/octet-stream',
+          modelName,
+          isPublic,
+          isFileObject: true
+        });
       }
     } catch (error) {
       console.error(error);
@@ -359,13 +432,34 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {uploading ? 'Mengunggah...' : 'Unggah File'}
       </Button>
       {field.value ? (
-        <YStack mt="$2" p="$2" br="$2" bc="$backgroundHover">
-          <Text color={COLORS.success} fontSize={12} numberOfLines={1}>
-            Terunggah: {field.value.split('/').pop()}
+        <XStack mt="$2" p="$2" br="$2" bc="$backgroundHover" ai="center" jc="space-between">
+          <Text color={COLORS.success} fontSize={12} numberOfLines={1} flex={1}>
+            {field.value.isFileObject ? `Terpilih: ${field.value.name}` : (typeof field.value === 'string' ? `Terunggah: ${field.value.split('/').pop()}` : 'File terpilih')}
           </Text>
-        </YStack>
+          {fieldConfig.show_preview && (
+            <Button
+              size="$2"
+              chromeless
+              icon={
+                (field.value.isFileObject && field.value.type?.startsWith('image')) ||
+                  (typeof field.value === 'string' && field.value.match(/\.(jpeg|jpg|gif|png)$/i))
+                  ? ImageIcon
+                  : Download
+              }
+              onPress={handlePreviewAction}
+              padding="$1"
+            />
+          )}
+        </XStack>
       ) : null}
       <ErrorMessage error={fieldState.error} />
+      {previewOpen && (
+        <PreviewDialog
+          open={previewOpen}
+          setOpen={setPreviewOpen}
+          uri={field.value?.isFileObject ? field.value.uri : (typeof field.value === 'string' ? getImageUrl(field.value) : '')}
+        />
+      )}
     </YStack>
   );
 };
@@ -400,7 +494,7 @@ const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
       >
         Buka Pad Tanda Tangan
       </Button>
-      
+
       {field.value ? <Text color={COLORS.success} fontSize={12}>Tanda tangan tersimpan</Text> : null}
 
       <Dialog modal open={open} onOpenChange={setOpen}>
@@ -409,7 +503,7 @@ const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
           <Dialog.Content bordered elevate key="content" gap="$1" width="90%" height="60%">
             <Dialog.Title>Tanda Tangan</Dialog.Title>
             <Dialog.Description>Silakan tanda tangan di bawah ini</Dialog.Description>
-            
+
             <YStack flex={1} backgroundColor="$background" borderWidth={1} borderColor="$borderColor">
               <SignatureScreen
                 ref={ref}
@@ -512,7 +606,7 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
-      
+
       <XStack fw="wrap" bc="$backgroundHover" p="$2" br="$3">
         {isFetching && (
           <YStack width="100%" ai="center" padding="$2">
@@ -520,10 +614,10 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
           </YStack>
         )}
         {options.map((opt: any) => (
-          <XStack 
-            key={opt.value} 
-            ai="center" 
-            gap="$1" 
+          <XStack
+            key={opt.value}
+            ai="center"
+            gap="$1"
             paddingVertical="$0.5"
             width={columns > 1 ? `${100 / columns}%` : '100%'}
             minWidth={columns > 1 ? 120 : '100%'}
@@ -547,7 +641,7 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
           <Text color={COLORS.textMuted} textAlign="center" width="100%">Tidak ada data.</Text>
         )}
       </XStack>
-      
+
       <ErrorMessage error={fieldState.error} />
     </YStack>
   );
@@ -593,9 +687,9 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
-      
-      <RadioGroup 
-        value={field.value ? String(field.value) : ''} 
+
+      <RadioGroup
+        value={field.value ? String(field.value) : ''}
         onValueChange={field.onChange}
       >
         <XStack fw="wrap" bc="$backgroundHover" p="$2" br="$3">
@@ -605,17 +699,17 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control }) => {
             </YStack>
           )}
           {options.map((opt: any) => (
-            <XStack 
-              key={opt.value} 
-              ai="center" 
-              gap="$1" 
+            <XStack
+              key={opt.value}
+              ai="center"
+              gap="$1"
               paddingVertical="$0.5"
               width={columns > 1 ? `${100 / columns}%` : '100%'}
               minWidth={columns > 1 ? 120 : '100%'}
             >
-              <RadioGroup.Item 
-                value={String(opt.value)} 
-                id={`${fieldConfig.id}-${opt.value}`} 
+              <RadioGroup.Item
+                value={String(opt.value)}
+                id={`${fieldConfig.id}-${opt.value}`}
                 size="$5"
               >
                 <RadioGroup.Indicator />
@@ -630,7 +724,7 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control }) => {
           )}
         </XStack>
       </RadioGroup>
-      
+
       <ErrorMessage error={fieldState.error} />
     </YStack>
   );
@@ -754,17 +848,36 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   });
 
   const [uploading, setUploading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const handlePreviewAction = () => {
+    if (!field.value) return;
+    const isObj = field.value && typeof field.value === 'object' && field.value.isFileObject;
+    const uri = isObj ? field.value.uri : field.value;
+    const type = isObj ? field.value.type : (uri.match(/\.(jpeg|jpg|gif|png)$/i) ? 'image/jpeg' : 'application/octet-stream');
+
+    if (type && type.startsWith('image')) {
+      setPreviewOpen(true);
+    } else {
+      const fullUrl = uri.startsWith('http') || uri.startsWith('data:') || uri.startsWith('file:')
+        ? uri
+        : getImageUrl(uri);
+      console.log('full url', fullUrl)
+      Linking.openURL(fullUrl);
+    }
+  };
 
   const takePhoto = async () => {
     try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        alert('Izin kamera ditolak');
+        alert('Izin akses galeri ditolak');
         return;
       }
 
-      let result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
         quality: 1,
       });
 
@@ -773,16 +886,14 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         const modelName = fieldConfig.rules?.model_name || 'general';
         const isPublic = fieldConfig.rules?.is_public === true;
 
-        setUploading(true);
-        try {
-          const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
-          field.onChange(uploadResult.data.file_url);
-        } catch (error: any) {
-          console.error('Upload failed:', error);
-          alert('Gagal mengunggah foto: ' + (error.response?.data?.message || error.message));
-        } finally {
-          setUploading(false);
-        }
+        field.onChange({
+          uri: asset.uri,
+          name: asset.fileName || 'photo.jpg',
+          type: asset.mimeType || 'image/jpeg',
+          modelName,
+          isPublic,
+          isFileObject: true
+        });
       }
     } catch (error) {
       console.error(error);
@@ -802,16 +913,73 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         borderColor={fieldState.error ? COLORS.danger : undefined}
         borderWidth={fieldState.error ? 1 : 0}
       >
-        {uploading ? 'Mengunggah...' : 'Ambil Foto'}
+        {uploading ? 'Mengunggah...' : 'Pilih Foto'}
       </Button>
       {field.value ? (
-        <YStack mt="$2" p="$2" br="$2" bc="$backgroundHover">
-          <Text color={COLORS.success} fontSize={12} numberOfLines={1}>
-            Foto tersimpan: {field.value.split('/').pop()}
+        <XStack mt="$2" p="$2" br="$2" bc="$backgroundHover" ai="center" jc="space-between">
+          <Text color={COLORS.success} fontSize={12} numberOfLines={1} flex={1}>
+            {field.value.isFileObject ? `Terpilih: ${field.value.name}` : (typeof field.value === 'string' ? `Foto tersimpan: ${field.value.split('/').pop()}` : 'Foto terpilih')}
           </Text>
-        </YStack>
+          {fieldConfig.show_preview && (
+            <Button
+              size="$2"
+              chromeless
+              icon={
+                (field.value.isFileObject && field.value.type?.startsWith('image')) ||
+                  (typeof field.value === 'string' && field.value.match(/\.(jpeg|jpg|gif|png)$/i))
+                  ? ImageIcon
+                  : Download
+              }
+              onPress={handlePreviewAction}
+              padding="$1"
+            />
+          )}
+        </XStack>
       ) : null}
       <ErrorMessage error={fieldState.error} />
+      {previewOpen && (
+        <PreviewDialog
+          open={previewOpen}
+          setOpen={setPreviewOpen}
+          uri={field.value?.isFileObject ? field.value.uri : (typeof field.value === 'string' ? getImageUrl(field.value) : '')}
+        />
+      )}
+    </YStack>
+  );
+};
+
+const InputSwitch: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+  const { field } = useController({
+    name: fieldConfig.id,
+    control,
+  });
+
+  return (
+    <YStack gap="$1" mb="$2">
+      <XStack gap="$3" ai="center" jc="space-between" bc="$backgroundHover" p="$3" br="$3">
+        <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain} flex={1}>
+          {fieldConfig.label}
+          {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
+        </Label>
+        <Switch
+          id={fieldConfig.id}
+          checked={!!field.value}
+          onCheckedChange={field.onChange}
+          disabled={fieldConfig.is_locked}
+          backgroundColor={field.value ? COLORS.primaryLight : COLORS.warningLight}
+          width={44}
+          height={24}
+          borderRadius={20}
+          padding={2}
+        >
+          <Switch.Thumb
+            backgroundColor={field.value ? COLORS.primary : COLORS.warning}
+            width={20}
+            height={20}
+            borderRadius={10}
+          />
+        </Switch>
+      </XStack>
     </YStack>
   );
 };
@@ -829,4 +997,5 @@ export const FormComponentMap: Record<string, React.FC<FieldProps>> = {
   dropdown: InputDropdown,
   checkbox: InputCheckbox,
   radio: InputRadio,
+  switch: InputSwitch,
 };

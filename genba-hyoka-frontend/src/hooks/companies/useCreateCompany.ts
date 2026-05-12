@@ -1,8 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '../../services/api/companyService';
-import { router } from 'expo-router';
 import { useToastController } from '@tamagui/toast';
-
 import { parseBackendError } from '../../utils/errorParser';
 
 export const useCreateCompany = () => {
@@ -17,11 +15,9 @@ export const useCreateCompany = () => {
       
       toast.show('Sukses', {
         message: 'Profil perusahaan berhasil dibuat.',
+        type: 'success',
         native: false,
       });
-
-      // Go back or to list
-      router.back();
     },
     onError: (error: any) => {
       console.error('Failed to create company:', error);
