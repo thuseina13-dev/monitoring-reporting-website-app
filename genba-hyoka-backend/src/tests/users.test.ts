@@ -122,7 +122,7 @@ describe('Users Module - Unit Test /v1/users', () => {
   it('Harus berhasil mendaftarkan user baru dengan roleIds (201)', async () => {
     const token = await getTestToken();
     const response = await app.handle(
-      new Request('http://localhost/v1/users', {
+      new Request('http://localhost/v1/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: `access_token=${token}` },
         body: JSON.stringify({ 
@@ -138,10 +138,10 @@ describe('Users Module - Unit Test /v1/users', () => {
     expect(body.success).toBe(true);
   });
 
-  it('POST /v1/users > Harus berhasil daftar meskipun roleIds kosong (201)', async () => {
+  it('POST /v1/users/register > Harus berhasil daftar meskipun roleIds kosong (201)', async () => {
     const token = await getTestToken();
     const response = await app.handle(
-      new Request('http://localhost/v1/users', {
+      new Request('http://localhost/v1/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: `access_token=${token}` },
         body: JSON.stringify({
