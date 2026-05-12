@@ -1,8 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../../store/authStore';
 
+const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}/${process.env.EXPO_PUBLIC_API_VERSION}`
 const axiosClient = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL,
+  baseURL: apiUrl,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,12 +30,12 @@ axiosClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const csrfToken = useAuthStore.getState().csrfToken;
     const method = config.method?.toUpperCase();
-    
+
     // Inject CSRF token for mutation requests
     if (csrfToken && method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
       config.headers['X-CSRF-TOKEN'] = csrfToken;
     }
-    
+
     return config;
   },
   (error) => {
@@ -73,17 +74,17 @@ axiosClient.interceptors.response.use(
 
       try {
         // Hit refresh-token endpoint, cookies sent automatically
-        const response = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/auth/refresh-token`, {}, {
+        const response = await axios.post(`${apiUrl}/auth/refresh-token`, {}, {
           withCredentials: true,
         });
 
         const { csrf_token } = response.data.data;
-        
+
         // Update store
         useAuthStore.getState().updateCsrfToken(csrf_token);
 
         processQueue(null);
-        
+
         const method = originalRequest.method?.toUpperCase();
         if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
           originalRequest.headers['X-CSRF-TOKEN'] = csrf_token;

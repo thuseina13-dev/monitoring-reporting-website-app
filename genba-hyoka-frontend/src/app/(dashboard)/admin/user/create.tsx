@@ -75,7 +75,12 @@ const CreateUserPage = () => {
   const { mutate, isPending } = useRegisterUser();
 
   const handleSubmit = (data: any) => {
-    mutate(data);
+    mutate(data, {
+      onSuccess: () => {
+        // Redirect tegas ke halaman list setelah sukses
+        router.replace('/(dashboard)/admin/user');
+      }
+    });
   };
 
   const handleCancel = () => {

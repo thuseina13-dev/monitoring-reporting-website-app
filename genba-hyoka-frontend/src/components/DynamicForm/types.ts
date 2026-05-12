@@ -10,6 +10,7 @@ export type FieldType =
   | 'dropdown'
   | 'checkbox'
   | 'radio'
+  | 'switch'
   | 'password';
 
 export interface ShowIfCondition {
@@ -57,11 +58,18 @@ export interface FormField {
   is_multiple?: boolean;
   columns?: number;
   icon_left?: string;
+  show_preview?: boolean;
+}
+
+export interface FormSection {
+  title?: string;
+  field_ids: string[];
 }
 
 export interface FormSchema {
   title?: string;
   fields: FormField[];
+  sections?: FormSection[];
   submit_label?: string;
   hide_cancel?: boolean;
   use_gradient?: boolean;

@@ -5,6 +5,9 @@ import axios from 'axios';
 // Load .env BEFORE anything else
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
+
+const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}/${process.env.EXPO_PUBLIC_API_VERSION}`
+
 // Mocking native dependencies
 jest.mock('expo-secure-store', () => ({
   setItemAsync: jest.fn(),
@@ -16,13 +19,9 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: jest.fn() }),
 }));
 
-const { authService } = require('./authService');
-const axiosClient = require('./axiosClient').default;
-
 describe('authService Full Lifecycle Integration Test', () => {
   const email = process.env.SUPER_ADMIN_EMAIL;
   const password = process.env.SUPER_ADMIN_PASSWORD;
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 
   let cookieHeader: string = '';
   let csrfToken: string = '';

@@ -51,7 +51,8 @@ Project ini menggunakan variabel environment untuk menghubungkan frontend dengan
 | Variabel | Deskripsi | Contoh Nilai |
 | :--- | :--- | :--- |
 | `EXPO_PUBLIC_ENV` | Environment saat ini | `development` |
-| `EXPO_PUBLIC_API_URL` | URL API Backend | `http://localhost:3000/v1` |
+| `EXPO_PUBLIC` | URL API Backend | `http://localhost:3000/` |
+| `EXPO_PUBLIC_VERSION` | URL Version API Backend | `v1` |
 | `EXPO_PUBLIC_WS_URL` | URL WebSocket Backend | `ws://localhost:3000/ws` |
 | `SUPER_ADMIN_EMAIL` | Email akun master | `admin@genba.com` |
 | `SUPER_ADMIN_PASSWORD` | Password akun master | `ResetPwd999!` |

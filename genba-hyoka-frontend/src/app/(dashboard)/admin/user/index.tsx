@@ -71,6 +71,7 @@ const UserListPage = () => {
             email={userItem.email}
             phone={userItem.phoneNo}
             address={userItem.address}
+            photoProfile={userItem.photoProfile}
             onToggleStatus={() => handleToggleStatus(userItem.id, userItem.isActive)}
             onDelete={() => handleDeleteUser(userItem.id)}
             isDeleting={isDeleting}

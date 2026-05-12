@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../../services/api/userService';
-import { router } from 'expo-router';
 import { useToastController } from '@tamagui/toast';
 import { parseBackendError } from '../../utils/errorParser';
 
@@ -16,16 +15,15 @@ export const useRegisterUser = () => {
       
       toast.show('Berhasil', {
         message: 'Pengguna baru berhasil ditambahkan.',
+        type: 'success',
         native: false,
       });
-      
-      // Go back to the list
-      router.back();
     },
     onError: (error: any) => {
       console.error('Failed to register user:', error);
       toast.show('Gagal', {
         message: parseBackendError(error),
+        type: 'error',
         native: false,
       });
     },

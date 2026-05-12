@@ -36,10 +36,8 @@ export const uploadModule = new Elysia({ prefix: '/v1/upload' })
 
       const result = await StorageService.upload(file, currentUser.id, model_name, is_public === 'true' || is_public === true);
       
-      // Construct Full URL
-      const url = new URL(request.url);
-      const baseUrl = `${url.protocol}//${url.host}`;
-      const fileUrl = `${baseUrl}/uploads/${result.file_path}`;
+      // Use relative URL for file_url to be stored in database safely
+      const fileUrl = `/uploads/${result.file_path}`;
 
       return sendSuccess({
         file_url: fileUrl,

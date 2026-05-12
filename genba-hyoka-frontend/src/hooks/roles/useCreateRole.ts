@@ -17,6 +17,7 @@ export const useCreateRole = () => {
       
       toast.show('Sukses', {
         message: 'Role berhasil dibuat.',
+        type: 'success',
         native: false,
       });
 

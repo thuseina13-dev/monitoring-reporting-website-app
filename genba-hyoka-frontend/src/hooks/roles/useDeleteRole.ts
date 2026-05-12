@@ -16,6 +16,7 @@ export const useDeleteRole = () => {
       
       toast.show('Sukses', {
         message: 'Role berhasil dihapus.',
+        type: 'success',
         native: false,
       });
     },
