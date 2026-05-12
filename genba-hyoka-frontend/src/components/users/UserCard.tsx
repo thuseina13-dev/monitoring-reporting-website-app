@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { YStack, XStack, Text, View, Button, AlertDialog } from 'tamagui';
+import { YStack, XStack, Text, View, Button } from 'tamagui';
 import { ChevronDown, ChevronUp, Mail, Smartphone, MapPinned, Edit3, Key, Power, Trash2 } from '@tamagui/lucide-icons';
 import { COLORS } from '../../constants/theme';
+import { ConfirmationDialog } from '../common/ConfirmationDialog';
 
 export interface UserCardProps {
   id: string;
@@ -15,9 +16,11 @@ export interface UserCardProps {
   onToggleStatus?: () => void;
   onDelete?: () => void;
   onResetPassword?: (id: string) => void;
+  isDeleting?: boolean;
+  isUpdating?: boolean;
 }
 
-const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, email, phone, address, onToggleStatus, onDelete, onResetPassword }) => {
+const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, email, phone, address, onToggleStatus, onDelete, onResetPassword, isDeleting = false, isUpdating = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [dialogConfig, setDialogConfig] = useState<{ isOpen: boolean, type: 'status' | 'delete' | null }>({ isOpen: false, type: null });
 
@@ -50,11 +53,9 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
       backgroundColor={COLORS.cardBackground}
       borderRadius={12}
       borderWidth={1.5}
-      // Garis pinggir hijau muncul jika kartu dibuka dan user aktif
       borderColor={isExpanded && isActive ? COLORS.primary : COLORS.borderLight}
       overflow="hidden"
     >
-      {/* Header Kartu (Selalu Terlihat) */}
       <XStack padding="$4" alignItems="center" justifyContent="space-between" onPress={() => setIsExpanded(!isExpanded)}>
         <XStack gap="$3" alignItems="center" flex={1}>
           <View
@@ -95,7 +96,6 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
         </XStack>
       </XStack>
 
-      {/* Bagian Detail Informasi (Yang Anda sebut Pop-up/Expandable) */}
       {isExpanded && (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$5">
           <YStack gap="$4" paddingTop="$4" borderTopWidth={1} borderTopColor={COLORS.borderSeparator}>
@@ -119,7 +119,6 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
             )}
           </YStack>
 
-          {/* Tombol Aksi di bagian bawah detail */}
           <XStack gap="$2" justifyContent="space-between" alignItems="center">
             <XStack gap="$2" flex={1}>
               <ActionButton icon={<Edit3 size={14} />} label="Edit" />
@@ -147,63 +146,28 @@ const UserCard: React.FC<UserCardProps> = ({ id, name, role, company, isActive, 
         </YStack>
       )}
 
-      {/* AlertDialog Kustom dari Tamagui */}
-      <AlertDialog 
-        open={dialogConfig.isOpen} 
+      {/* Confirmation Dialogs */}
+      <ConfirmationDialog
+        isOpen={dialogConfig.isOpen && dialogConfig.type === 'status'}
         onOpenChange={(isOpen) => setDialogConfig(prev => ({ ...prev, isOpen }))}
-        disableRemoveScroll // Menghilangkan celah putih di kanan pada browser web
-      >
-        <AlertDialog.Portal>
-          <AlertDialog.Overlay
-            key="overlay"
-            opacity={0.5}
-          />
-          <AlertDialog.Content
-            bordered
-            elevate
-            key="content"
-            x={0}
-            scale={1}
-            opacity={1}
-            y={0}
-            maxWidth={400}
-            width="90%"
-            backgroundColor="white"
-            borderRadius={12}
-            padding="$5"
-          >
-            <YStack gap="$4">
-              <AlertDialog.Title fontSize={18} fontWeight="bold" color={COLORS.textMain}>
-                {dialogConfig.type === 'status' ? 'Konfirmasi Status' : 'Hapus User'}
-              </AlertDialog.Title>
-              <AlertDialog.Description fontSize={14} color={COLORS.textSecondary} lineHeight={20}>
-                {dialogConfig.type === 'status' 
-                  ? `Apakah Anda yakin ingin ${isActive ? 'menonaktifkan' : 'mengaktifkan'} user ${name}?`
-                  : `Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin menghapus ${name}?`
-                }
-              </AlertDialog.Description>
+        title="Konfirmasi Status"
+        description={`Apakah Anda yakin ingin ${isActive ? 'menonaktifkan' : 'mengaktifkan'} user ${name}?`}
+        onConfirm={handleConfirmAction}
+        confirmLabel="Ya, Lanjutkan"
+        variant={isActive ? 'danger' : 'primary'}
+        isLoading={isUpdating}
+      />
 
-              <XStack justifyContent="flex-end" marginTop="$2" gap="$2">
-                <AlertDialog.Cancel asChild>
-                  <Button variant="outlined" borderColor={COLORS.borderLight} backgroundColor="white">
-                    Batal
-                  </Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action asChild onPress={handleConfirmAction}>
-                  <Button 
-                    backgroundColor={dialogConfig.type === 'delete' || isActive ? COLORS.danger : COLORS.primary} 
-                  >
-                    <Text color="white" fontWeight="bold">
-                      {dialogConfig.type === 'status' ? 'Ya, Lanjutkan' : 'Hapus'}
-                    </Text>
-                  </Button>
-                </AlertDialog.Action>
-              </XStack>
-            </YStack>
-          </AlertDialog.Content>
-        </AlertDialog.Portal>
-      </AlertDialog>
-
+      <ConfirmationDialog
+        isOpen={dialogConfig.isOpen && dialogConfig.type === 'delete'}
+        onOpenChange={(isOpen) => setDialogConfig(prev => ({ ...prev, isOpen }))}
+        title="Hapus User"
+        description={`Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin menghapus ${name}?`}
+        onConfirm={handleConfirmAction}
+        confirmLabel="Hapus"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </YStack>
   );
 };

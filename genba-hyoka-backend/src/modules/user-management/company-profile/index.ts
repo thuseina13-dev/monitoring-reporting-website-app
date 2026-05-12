@@ -2,7 +2,7 @@ import { Elysia } from 'elysia';
 import { db } from '../../../db';
 import { companyProfiles, users } from '../../../db/schema';
 import { createAuditLog } from '../../../utils/auditLogger';
-import { eq, and, count, gt, asc, isNull, inArray, or, ilike } from 'drizzle-orm';
+import { eq, ne, and, count, gt, asc, isNull, or, ilike } from 'drizzle-orm';
 
 import { buildRQBWhere } from '../../../utils/filter';
 
@@ -67,7 +67,7 @@ export const companyProfileModule = new Elysia({ prefix: '/v1/company-profiles' 
         const [totalCount] = await db
           .select({ count: count() })
           .from(companyProfiles)
-          .where(buildRQBWhere(companyProfiles, { and, or, eq, ilike, gt }, query, filterOptions));
+          .where(buildRQBWhere(companyProfiles, { and, or, eq, ne, ilike, gt }, query, filterOptions));
         return Number(totalCount.count);
       });
 

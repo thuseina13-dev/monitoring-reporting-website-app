@@ -97,7 +97,7 @@ export const buildRQBWhere = (
     actualFields = getTableColumns(aliasedTable(fields as any, config.name));
   }
 
-  const { and, or, eq, ilike, gt } = ops;
+  const { and, or, eq, ilike, gt, ne } = ops;
   const conditions: any[] = options.customConditions ? [...options.customConditions] : [];
 
   // 1. Global Search
@@ -115,6 +115,17 @@ export const buildRQBWhere = (
     if (options.excludeFields?.includes(key)) continue;
 
     const value = query[key];
+
+    // Handle Not Equal (_ne suffix)
+    if (key.endsWith('_ne')) {
+      const actualKey = key.slice(0, -3);
+      const column = actualFields[actualKey];
+      if (column && value !== undefined && value !== '') {
+        conditions.push(ne(column, value));
+        continue;
+      }
+    }
+
     const column = actualFields[key];
     
     if (!column || value === undefined || value === '') continue;

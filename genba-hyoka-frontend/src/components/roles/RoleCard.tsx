@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { YStack, XStack, Text, View, Button, AlertDialog } from 'tamagui';
+import { YStack, XStack, Text, View, Button } from 'tamagui';
 import { ChevronDown, ChevronUp, Trash2 } from '@tamagui/lucide-icons';
 import { COLORS } from '../../constants/theme';
+import { ConfirmationDialog } from '../common/ConfirmationDialog';
 
 export interface RoleCardProps {
   id: string;
@@ -12,9 +13,10 @@ export interface RoleCardProps {
   type: string;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
+  isDeleting?: boolean;
 }
 
-const RoleCard: React.FC<RoleCardProps> = ({ id, name, code, description, isActive, type, onEdit, onDelete }) => {
+const RoleCard: React.FC<RoleCardProps> = ({ id, name, code, description, isActive, type, onEdit, onDelete, isDeleting = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -98,48 +100,16 @@ const RoleCard: React.FC<RoleCardProps> = ({ id, name, code, description, isActi
         </YStack>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialog.Portal>
-          <AlertDialog.Overlay key="overlay" opacity={0.5} />
-          <AlertDialog.Content
-            bordered
-            elevate
-            key="content"
-            x={0}
-            scale={1}
-            opacity={1}
-            y={0}
-            maxWidth={400}
-            width="90%"
-            backgroundColor="white"
-            borderRadius={12}
-            padding="$5"
-          >
-            <YStack gap="$4">
-              <AlertDialog.Title fontSize={18} fontWeight="bold" color={COLORS.textMain}>
-                Hapus Role
-              </AlertDialog.Title>
-              <AlertDialog.Description fontSize={14} color={COLORS.textSecondary} lineHeight={20}>
-                Apakah Anda yakin ingin menghapus role &quot;{name}&quot;? Tindakan ini tidak dapat dibatalkan.
-              </AlertDialog.Description>
-
-              <XStack justifyContent="flex-end" marginTop="$2" gap="$2">
-                <AlertDialog.Cancel asChild>
-                  <Button variant="outlined" borderColor={COLORS.borderLight} backgroundColor="white">
-                    Batal
-                  </Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action asChild onPress={handleConfirmDelete}>
-                  <Button backgroundColor={COLORS.danger}>
-                    <Text color="white" fontWeight="bold">Hapus</Text>
-                  </Button>
-                </AlertDialog.Action>
-              </XStack>
-            </YStack>
-          </AlertDialog.Content>
-        </AlertDialog.Portal>
-      </AlertDialog>
+      <ConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Hapus Role"
+        description={`Apakah Anda yakin ingin menghapus role "${name}"? Tindakan ini tidak dapat dibatalkan.`}
+        onConfirm={handleConfirmDelete}
+        confirmLabel="Hapus"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </YStack>
   );
 };

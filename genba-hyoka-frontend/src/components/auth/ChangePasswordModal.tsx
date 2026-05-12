@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, TouchableOpacity, StyleSheet } from 'react-native';
-import { YStack, XStack, Text, Input, Button, View, Label } from 'tamagui';
+import { Modal, StyleSheet } from 'react-native';
+import { YStack, XStack, Text, Input, Button, View, Label, Spinner, Theme } from 'tamagui';
 import { X, Eye, EyeOff, Lock, CheckCircle2, Circle } from '@tamagui/lucide-icons';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,7 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 interface ChangePasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  targetUserId?: string; // Jika ada, berarti sedang mereset password orang lain
+  targetUserId?: string;
   targetUserName?: string;
 }
 
@@ -23,28 +23,28 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
   const { user } = useAuthStore() as any;
 
   const isSelf = !targetUserId || targetUserId === user?.id;
-  const isSuperAdmin = isSelf ? user?.isSuperAdmin : false; // Blokade hanya jika merubah diri sendiri dan dia SA? 
-  // Tunggu, kriteria "blokade jika mencoba mengubah akun Super Admin" 
-  // bisa juga berarti admin biasa dilarang mereset password Super Admin.
+  const userRoles = user?.roles || [];
+  const isSuperAdmin = isSelf ? userRoles.some((r: any) => r.type === 'super_admin') : false;
 
   const {
     control,
     handleSubmit,
     watch,
     reset,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<ChangePasswordFormInputs>({
     resolver: zodResolver(changePasswordSchema),
-    mode: 'onChange',
+    mode: 'onBlur',
     defaultValues: {
       new_password: '',
       confirm_password: '',
     },
   });
 
-  const newPassword = watch('new_password');
+  const newPassword = watch('new_password') || '';
 
   const onSubmit = (data: ChangePasswordFormInputs) => {
+    console.log('--- ChangePasswordModal: onSubmit triggered ---');
     changePassword({ 
       newPassword: data.new_password, 
       userId: targetUserId 
@@ -57,6 +57,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
   };
 
   const handleClose = () => {
+    console.log('--- ChangePasswordModal: handleClose triggered ---');
+    if (isPending) return;
     reset();
     onClose();
   };
@@ -76,11 +78,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
-          onPress={handleClose} 
-        />
+        {/* Backdrop - No onPress to prevent auto-close */}
+        <View style={styles.backdrop} />
         
         <YStack
           width="90%"
@@ -88,8 +87,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
           backgroundColor="white"
           borderRadius={16}
           padding="$5"
-          elevation={5}
+          elevation={10}
           gap="$4"
+          zIndex={100}
         >
           {/* Header */}
           <XStack justifyContent="space-between" alignItems="center">
@@ -101,9 +101,14 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                 {targetUserName ? `Reset Sandi: ${targetUserName}` : 'Ganti Password'}
               </Text>
             </XStack>
-            <TouchableOpacity onPress={handleClose}>
-              <X size={24} color={COLORS.textSecondary} />
-            </TouchableOpacity>
+            <Button
+              size="$3"
+              circular
+              chromeless
+              icon={<X size={24} color={COLORS.textSecondary} />}
+              onPress={handleClose}
+              disabled={isPending}
+            />
           </XStack>
 
           <Text fontSize={14} color={COLORS.textSecondary} marginBottom="$2">
@@ -115,7 +120,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
 
           {/* Form */}
           <YStack gap="$4">
-            {/* New Password */}
             <YStack gap="$1.5">
               <Label fontSize={14} fontWeight="600" color={COLORS.textMain}>
                 Password Baru
@@ -124,28 +128,30 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                 control={control}
                 name="new_password"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <XStack position="relative">
+                  <XStack ai="center" bg={COLORS.inputBackground} br="$3" px="$3" h={50} bw={1} bc={errors.new_password ? COLORS.danger : COLORS.borderLight} position="relative">
                     <Input
                       flex={1}
+                      bw={0}
+                      bg="transparent"
                       secureTextEntry={!showPassword}
+                      type={showPassword ? 'text' : 'password'}
                       placeholder="Masukkan password baru"
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      borderColor={errors.new_password ? COLORS.danger : COLORS.borderLight}
-                      focusStyle={{ borderColor: COLORS.primary }}
-                      paddingRight={45}
+                      paddingRight={40}
+                      disabled={isPending}
+                      autoComplete="new-password"
                     />
-                    <TouchableOpacity
-                      style={styles.eyeIcon}
+                    <Button
+                      size="$3"
+                      chromeless
+                      icon={showPassword ? <EyeOff size={20} color={COLORS.textSecondary} /> : <Eye size={20} color={COLORS.textSecondary} />}
                       onPress={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff size={20} color={COLORS.textSecondary} />
-                      ) : (
-                        <Eye size={20} color={COLORS.textSecondary} />
-                      )}
-                    </TouchableOpacity>
+                      disabled={isPending}
+                      position="absolute"
+                      right={5}
+                    />
                   </XStack>
                 )}
               />
@@ -156,7 +162,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
               )}
             </YStack>
 
-            {/* Password Requirements Checklist */}
             <YStack backgroundColor={COLORS.bgSoft} padding="$3" borderRadius="$3" gap="$2">
               <Text fontSize={12} fontWeight="700" color={COLORS.textSecondary} marginBottom="$1">
                 Persyaratan Password:
@@ -179,7 +184,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
               ))}
             </YStack>
 
-            {/* Confirm Password */}
             <YStack gap="$1.5">
               <Label fontSize={14} fontWeight="600" color={COLORS.textMain}>
                 Konfirmasi Password Baru
@@ -188,28 +192,30 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
                 control={control}
                 name="confirm_password"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <XStack position="relative">
+                  <XStack ai="center" bg={COLORS.inputBackground} br="$3" px="$3" h={50} bw={1} bc={errors.confirm_password ? COLORS.danger : COLORS.borderLight} position="relative">
                     <Input
                       flex={1}
+                      bw={0}
+                      bg="transparent"
                       secureTextEntry={!showConfirmPassword}
+                      type={showConfirmPassword ? 'text' : 'password'}
                       placeholder="Ulangi password baru"
                       value={value}
                       onChangeText={onChange}
                       onBlur={onBlur}
-                      borderColor={errors.confirm_password ? COLORS.danger : COLORS.borderLight}
-                      focusStyle={{ borderColor: COLORS.primary }}
-                      paddingRight={45}
+                      paddingRight={40}
+                      disabled={isPending}
+                      autoComplete="new-password"
                     />
-                    <TouchableOpacity
-                      style={styles.eyeIcon}
+                    <Button
+                      size="$3"
+                      chromeless
+                      icon={showConfirmPassword ? <EyeOff size={20} color={COLORS.textSecondary} /> : <Eye size={20} color={COLORS.textSecondary} />}
                       onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff size={20} color={COLORS.textSecondary} />
-                      ) : (
-                        <Eye size={20} color={COLORS.textSecondary} />
-                      )}
-                    </TouchableOpacity>
+                      disabled={isPending}
+                      position="absolute"
+                      right={5}
+                    />
                   </XStack>
                 )}
               />
@@ -221,7 +227,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
             </YStack>
           </YStack>
 
-          {/* Warning for Super Admin */}
           {isSuperAdmin && (
             <YStack backgroundColor={COLORS.dangerLight} padding="$3" borderRadius="$3" gap="$2" borderWidth={1} borderColor={COLORS.dangerBorder}>
               <Text fontSize={13} color={COLORS.dangerDark} fontWeight="bold">
@@ -233,7 +238,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
             </YStack>
           )}
 
-          {/* Actions */}
           <XStack gap="$3" marginTop="$4">
             <Button
               flex={1}
@@ -241,19 +245,20 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen
               borderColor={COLORS.borderLight}
               onPress={handleClose}
               disabled={isPending}
+              height={45}
             >
               Batal
             </Button>
             <Button
               flex={1}
-              backgroundColor={isValid && !isSuperAdmin ? COLORS.primary : COLORS.borderLight}
-              disabled={!isValid || isPending || isSuperAdmin}
+              backgroundColor={isSuperAdmin ? COLORS.borderLight : COLORS.primary}
+              disabled={isPending || isSuperAdmin}
               onPress={handleSubmit(onSubmit)}
-              opacity={isValid && !isSuperAdmin ? 1 : 0.6}
+              opacity={isSuperAdmin ? 0.6 : 1}
+              pressStyle={{ opacity: 0.8 }}
+              height={45}
             >
-              <Text color="white" fontWeight="bold">
-                {isPending ? 'Menyimpan...' : 'Simpan'}
-              </Text>
+              {isPending ? <Spinner color="white" /> : <Text color="white" fontWeight="bold">Simpan</Text>}
             </Button>
           </XStack>
         </YStack>
@@ -271,11 +276,6 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 12,
-    top: 12,
-    zIndex: 10,
+    zIndex: 1,
   },
 });

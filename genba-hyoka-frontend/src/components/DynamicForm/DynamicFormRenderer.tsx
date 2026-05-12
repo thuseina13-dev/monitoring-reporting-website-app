@@ -1,6 +1,7 @@
 import React from 'react';
 import { useForm, useWatch, Control, UseFormSetValue } from 'react-hook-form';
-import { YStack, Button, Text, XStack } from 'tamagui';
+import { YStack, Button, Text, XStack, Spinner } from 'tamagui';
+import { LinearGradient } from 'tamagui/linear-gradient';
 import { FormSchema, FormField } from './types';
 import { FormComponentMap } from './FormComponentMap';
 import { useAuthStore, AuthState } from '../../store/authStore';
@@ -65,9 +66,10 @@ export interface DynamicFormRendererProps {
   initialValues?: Record<string, any>;
   onSubmit?: (data: any) => void;
   onCancel?: () => void;
+  isLoading?: boolean;
 }
 
-export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema, initialValues, onSubmit, onCancel }) => {
+export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema, initialValues, onSubmit, onCancel, isLoading }) => {
   const user = useAuthStore((state: AuthState) => state.user);
 
   // Pre-process default values
@@ -90,31 +92,72 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
 
   const { control, handleSubmit, setValue } = useForm({
     values: defaultValues,
+    mode: 'onBlur',
   });
 
+  const submitLabel = schema.submit_label || 'Simpan Formulir';
+  const hideCancel = schema.hide_cancel || false;
+  const columns = schema.columns || 1;
+
   return (
-    <YStack gap="$4" padding="$4" backgroundColor="$background">
-      {schema.fields.map((field) => (
-        <FieldRenderer
-          key={field.id}
-          field={field}
-          control={control}
-          setValue={setValue}
-        />
-      ))}
+    <YStack gap="$2" padding="$4" backgroundColor="transparent">
+      {schema.title && (
+        <YStack mb="$4" ai="center">
+          <Text fontSize={22} fontWeight="700" color={COLORS.textMain}>{schema.title}</Text>
+        </YStack>
+      )}
+
+      <XStack fw="wrap" jc="flex-start" gap="$3">
+        {schema.fields.map((field) => (
+          <YStack 
+            key={field.id} 
+            width={columns > 1 ? `calc(${100 / columns}% - 12px)` : '100%'}
+            minWidth={columns > 1 ? 300 : '100%'}
+            flexGrow={1}
+          >
+            <FieldRenderer
+              field={field}
+              control={control}
+              setValue={setValue}
+            />
+          </YStack>
+        ))}
+      </XStack>
       
-      <XStack gap="$3" marginTop="$2">
-        {onCancel && (
-          <Button theme="alt1" flex={1} variant="outlined" onPress={onCancel}>
+      <XStack gap="$3" marginTop="$4">
+        {onCancel && !hideCancel && (
+          <Button theme="alt1" flex={1} variant="outlined" onPress={onCancel} height={50}>
             Batal
           </Button>
         )}
         <Button 
-          backgroundColor={COLORS.primary} 
+          backgroundColor={schema.use_gradient ? 'transparent' : COLORS.primary} 
           flex={1} 
+          height={55}
           onPress={handleSubmit(onSubmit || console.log)}
+          disabled={isLoading}
+          opacity={isLoading ? 0.7 : 1}
+          pressStyle={{ opacity: 0.8 }}
+          overflow="hidden"
+          position="relative"
         >
-          <Text color="white" fontWeight="700">Simpan Formulir</Text>
+          {schema.use_gradient && (
+            <LinearGradient
+              colors={COLORS.gradients?.primary || ['#10b981', '#059669']}
+              start={[0, 0]}
+              end={[1, 1]}
+              fullscreen
+              borderRadius={12}
+              zIndex={0}
+            />
+          )}
+          <XStack ai="center" jc="center" gap="$2" f={1} w="100%" h="100%" zIndex={1}>
+            {isLoading ? (
+              <Spinner color="white" />
+            ) : (
+              <Text color="white" fontSize={16} fontWeight="800">{submitLabel.toUpperCase()}</Text>
+            )}
+          </XStack>
         </Button>
       </XStack>
     </YStack>
