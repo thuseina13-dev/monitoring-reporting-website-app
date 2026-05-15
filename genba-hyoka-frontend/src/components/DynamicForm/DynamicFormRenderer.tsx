@@ -8,6 +8,7 @@ import { useAuthStore, AuthState } from '../../store/authStore';
 import { COLORS } from '../../constants/theme';
 import { storageService } from '../../services/api/storageService';
 import { parseBackendError } from '../../utils/errorParser';
+import { useToastController } from '@tamagui/toast';
 
 interface FieldRendererProps {
   field: FormField;
@@ -72,6 +73,7 @@ export interface DynamicFormRendererProps {
 
 export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema, initialValues, onSubmit, onCancel, isLoading }) => {
   const user = useAuthStore((state: AuthState) => state.user);
+  const toast = useToastController();
 
   // Pre-process default values
   const defaultValues: Record<string, any> = {};
@@ -122,7 +124,10 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
       }
     } catch (error: any) {
       console.error('Upload failed during submit:', error);
-      alert('Gagal mengunggah file: ' + parseBackendError(error));
+      toast.show('Gagal', {
+        message: 'Gagal mengunggah file: ' + parseBackendError(error),
+        type: 'error',
+      });
     } finally {
       setIsUploading(false);
     }

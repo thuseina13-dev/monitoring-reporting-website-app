@@ -12,6 +12,7 @@ import * as Location from 'expo-location';
 import SignatureScreen, { SignatureViewRef } from 'react-native-signature-canvas';
 import { Platform, ActivityIndicator, Image, Linking } from 'react-native';
 import { storageService } from '../../services/api/storageService';
+import { useToastController } from '@tamagui/toast';
 
 import { COLORS } from '../../constants/theme';
 import { getImageUrl } from '@/utils/getImageUrl';
@@ -89,6 +90,38 @@ const ErrorMessage = ({ error }: { error?: any }) => {
   return <Text color={COLORS.danger} fontSize={12} mt="$1">{error.message}</Text>;
 };
 
+const validateFile = (asset: any, rules: any, label: string, toast: any, onInvalid?: () => void) => {
+  if (rules?.max_size_mb) {
+    const maxSizeInBytes = rules.max_size_mb * 1024 * 1024;
+    const fileSize = asset.size || asset.fileSize;
+    if (fileSize && fileSize > maxSizeInBytes) {
+      toast.show('File Terlalu Besar', {
+        message: `${label}: Maksimal ${rules.max_size_mb}MB (Sekarang ${(fileSize / (1024 * 1024)).toFixed(2)}MB)`,
+        type: 'error',
+      });
+      onInvalid?.();
+      return false;
+    }
+  }
+
+  if (rules?.allowed_extensions && rules.allowed_extensions.length > 0) {
+    const fileName = (asset.name || asset.fileName || asset.uri.split('/').pop() || '').toLowerCase();
+    const isAllowed = rules.allowed_extensions.some((ext: string) =>
+      fileName.endsWith(ext.toLowerCase())
+    );
+    if (!isAllowed) {
+      toast.show('Format Tidak Didukung', {
+        message: `${label}: Harus ${rules.allowed_extensions.join(', ')}`,
+        type: 'error',
+      });
+      onInvalid?.();
+      return false;
+    }
+  }
+
+  return true;
+};
+
 const ICON_MAP: Record<string, any> = {
   mail: Mail,
   lock: Lock,
@@ -112,7 +145,7 @@ const InputText: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
-      <XStack ai="center" bg={COLORS.inputBackground || '$background'} br="$3" px="$3" h={50} bw={1} bc={fieldState.error ? COLORS.danger : COLORS.borderLight} position="relative">
+      <XStack ai="center" bg={COLORS.inputBackground || '$background'} br="$3" px="$1" h={50} bw={1} bc={fieldState.error ? COLORS.danger : COLORS.borderLight} position="relative">
         {fieldConfig.icon_left && ICON_MAP[fieldConfig.icon_left] && (
           React.createElement(ICON_MAP[fieldConfig.icon_left], {
             size: 18,
@@ -136,6 +169,7 @@ const InputText: React.FC<FieldProps> = ({ fieldConfig, control }) => {
           bw={0}
           bg="transparent"
           h="100%"
+          px="$2"
           paddingRight={isPassword ? 40 : 0}
         />
         {isPassword && (
@@ -177,7 +211,10 @@ const InputTextArea: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         onBlur={field.onBlur}
         disabled={fieldConfig.is_locked}
         placeholder={fieldConfig.label}
-        borderColor={fieldState.error ? COLORS.danger : undefined}
+        bg={COLORS.inputBackground}
+        borderColor={fieldState.error ? COLORS.danger : COLORS.borderLight}
+        borderWidth={1}
+        px="$3"
         autoComplete="none"
       />
       <ErrorMessage error={fieldState.error} />
@@ -206,7 +243,11 @@ const InputNumber: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         keyboardType="numeric"
         disabled={fieldConfig.is_locked}
         placeholder={fieldConfig.label}
-        borderColor={fieldState.error ? COLORS.danger : undefined}
+        bg={COLORS.inputBackground}
+        borderColor={fieldState.error ? COLORS.danger : COLORS.borderLight}
+        borderWidth={1}
+        h={50}
+        px="$3"
         autoComplete="none"
       />
       <ErrorMessage error={fieldState.error} />
@@ -268,11 +309,15 @@ const InputMap: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const [loading, setLoading] = useState(false);
 
   const getLocation = async () => {
+    const toast = useToastController();
     setLoading(true);
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        alert('Izin akses lokasi ditolak');
+        toast.show('Izin Ditolak', {
+          message: 'Akses lokasi diperlukan untuk fitur ini',
+          type: 'error',
+        });
         return;
       }
 
@@ -280,7 +325,10 @@ const InputMap: React.FC<FieldProps> = ({ fieldConfig, control }) => {
       field.onChange(`${location.coords.latitude}, ${location.coords.longitude}`);
     } catch (error) {
       console.error(error);
-      alert('Gagal mengambil lokasi');
+      toast.show('Gagal', {
+        message: 'Gagal mengambil lokasi perangkat',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -390,6 +438,7 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
     }
   };
 
+  const toast = useToastController();
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -399,17 +448,27 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
 
       if (!result.canceled) {
         const asset = result.assets[0];
-        const modelName = fieldConfig.rules?.model_name || 'general';
-        const isPublic = fieldConfig.rules?.is_public === true;
 
-        field.onChange({
-          uri: asset.uri,
-          name: asset.name || 'upload.pdf',
-          type: asset.mimeType || 'application/octet-stream',
-          modelName,
-          isPublic,
-          isFileObject: true
-        });
+        if (!validateFile(asset, fieldConfig.rules, fieldConfig.label, toast, () => field.onChange(''))) {
+          return;
+        }
+
+        setUploading(true);
+        try {
+          const modelName = fieldConfig.rules?.model_name || 'general';
+          const isPublic = fieldConfig.rules?.is_public === true;
+          
+          const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
+          field.onChange(uploadResult.data.file_url);
+        } catch (error: any) {
+          toast.show('Upload Gagal', {
+            message: error.response?.data?.message || error.message,
+            type: 'error',
+          });
+          field.onChange('');
+        } finally {
+          setUploading(false);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -426,8 +485,10 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         icon={uploading ? () => <ActivityIndicator size="small" color={COLORS.textLight} /> : FileUp}
         onPress={pickDocument}
         disabled={fieldConfig.is_locked || uploading}
-        borderColor={fieldState.error ? COLORS.danger : undefined}
-        borderWidth={fieldState.error ? 1 : 0}
+        bg={COLORS.inputBackground}
+        borderColor={fieldState.error ? COLORS.danger : COLORS.borderLight}
+        borderWidth={1}
+        height={50}
       >
         {uploading ? 'Mengunggah...' : 'Unggah File'}
       </Button>
@@ -489,8 +550,10 @@ const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         icon={PenTool}
         onPress={() => setOpen(true)}
         disabled={fieldConfig.is_locked}
-        borderColor={fieldState.error ? COLORS.danger : undefined}
-        borderWidth={fieldState.error ? 1 : 0}
+        bg={COLORS.inputBackground}
+        borderColor={fieldState.error ? COLORS.danger : COLORS.borderLight}
+        borderWidth={1}
+        height={50}
       >
         Buka Pad Tanda Tangan
       </Button>
@@ -607,7 +670,7 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
 
-      <XStack fw="wrap" bc="$backgroundHover" p="$2" br="$3">
+      <XStack fw="wrap" bg={COLORS.inputBackground} bw={1} bc={COLORS.borderLight} p="$2" br="$3">
         {isFetching && (
           <YStack width="100%" ai="center" padding="$2">
             <ActivityIndicator size="small" color={COLORS.primary} />
@@ -692,7 +755,7 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         value={field.value ? String(field.value) : ''}
         onValueChange={field.onChange}
       >
-        <XStack fw="wrap" bc="$backgroundHover" p="$2" br="$3">
+        <XStack fw="wrap" bg={COLORS.inputBackground} bw={1} bc={COLORS.borderLight} p="$2" br="$3">
           {isFetching && (
             <YStack width="100%" ai="center" padding="$2">
               <ActivityIndicator size="small" color={COLORS.primary} />
@@ -777,7 +840,7 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control }) => {
           onValueChange={field.onChange}
           disablePreventBodyScroll
         >
-          <Select.Trigger flex={1} iconAfter={ChevronDown}>
+          <Select.Trigger flex={1} iconAfter={ChevronDown} bg={COLORS.inputBackground} bw={1} bc={fieldState.error ? COLORS.danger : COLORS.borderLight} h={50}>
             <Select.Value placeholder="Pilih..." />
           </Select.Trigger>
 
@@ -867,11 +930,15 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
     }
   };
 
+  const toast = useToastController();
   const takePhoto = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        alert('Izin akses galeri ditolak');
+        toast.show('Izin Ditolak', {
+          message: 'Akses galeri diperlukan untuk memilih foto',
+          type: 'error',
+        });
         return;
       }
 
@@ -883,17 +950,27 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
 
       if (!result.canceled) {
         const asset = result.assets[0];
-        const modelName = fieldConfig.rules?.model_name || 'general';
-        const isPublic = fieldConfig.rules?.is_public === true;
 
-        field.onChange({
-          uri: asset.uri,
-          name: asset.fileName || 'photo.jpg',
-          type: asset.mimeType || 'image/jpeg',
-          modelName,
-          isPublic,
-          isFileObject: true
-        });
+        if (!validateFile(asset, fieldConfig.rules, fieldConfig.label, toast, () => field.onChange(''))) {
+          return;
+        }
+
+        setUploading(true);
+        try {
+          const modelName = fieldConfig.rules?.model_name || 'general';
+          const isPublic = fieldConfig.rules?.is_public === true;
+          
+          const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
+          field.onChange(uploadResult.data.file_url);
+        } catch (error: any) {
+          toast.show('Upload Gagal', {
+            message: error.response?.data?.message || error.message,
+            type: 'error',
+          });
+          field.onChange('');
+        } finally {
+          setUploading(false);
+        }
       }
     } catch (error) {
       console.error(error);

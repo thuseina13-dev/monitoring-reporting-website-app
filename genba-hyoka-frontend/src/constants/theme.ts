@@ -13,11 +13,11 @@ export const COLORS = {
   normal: '#95A5A6',
   
   // Backgrounds
-  pageBackground: process.env.EXPO_PUBLIC_PAGE_BG || '#F8F9FA',
+  pageBackground: process.env.EXPO_PUBLIC_PAGE_BG || '#FFFFFF',
   cardBackground: '#FFFFFF',
-  inputBackground: '#E7E8E9',
+  inputBackground: '#FFFFFF',
   bgLight: '#F1F3F5',
-  bgSoft: '#F8F9FA',
+  bgSoft: '#FFFFFF',
   
   // Text Colors
   textMain: '#2C3E50',
