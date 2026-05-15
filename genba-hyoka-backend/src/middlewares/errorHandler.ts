@@ -33,7 +33,7 @@ export const errorHandler = (app: Elysia) =>
         set.status = 422;
         return {
           success: false,
-          message: 'Format data laporan salah',
+          message: 'Format data yang dikirim salah',
           errors: (error as any).all,
         };
       case 'NOT_FOUND':
