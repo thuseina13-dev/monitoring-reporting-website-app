@@ -49,7 +49,7 @@ const companyProfileSchema: FormSchema = {
     {
       id: "phoneNo",
       label: "No Telepon",
-      type: "text",
+      type: "number",
       rules: {
         max_length: 25
       }
@@ -59,7 +59,8 @@ const companyProfileSchema: FormSchema = {
       label: "Email",
       type: "text",
       rules: {
-        max_length: 255
+        max_length: 255,
+        is_email: true
       }
     }
   ]

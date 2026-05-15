@@ -65,6 +65,14 @@ const registerSchema: FormSchema = {
       rules: {
         required: true
       }
+    },
+    {
+      id: "phoneNo",
+      label: "No Telepon",
+      type: "number",
+      rules: {
+        max_length: 25
+      }
     }
   ]
 };
