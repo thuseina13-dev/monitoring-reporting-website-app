@@ -37,14 +37,15 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionModule,
     TDF: 15, TAS: 15, SUB: 15, PRB: 15, REV: 15, TMP: 15 
   },
   adm: { // Admin
-    USR: 15, ROL: 15, CPY: 15, NFT: 5, AUD: 1 
+    USR: 15, ROL: 15, CPY: 15, NFT: 5, AUD: 1,
+    TDF: 15
   },
   man: { // Manager
     USR: 1, ROL: 1, CPY: 1, NFT: 5, AUD: 1, 
-    TDF: 15, TAS: 15, SUB: 1, PRB: 5, REV: 15, TMP: 15 
+    TAS: 15, SUB: 1, PRB: 5, REV: 15, TMP: 15 
   },
   emp: { // Employee
     USR: 1, ROL: 1, CPY: 1, NFT: 5, AUD: 1, 
-    TDF: 1, TAS: 1, SUB: 15, PRB: 15, REV: 1 
+    TAS: 1, SUB: 15, PRB: 15, REV: 1 
   }
 };
