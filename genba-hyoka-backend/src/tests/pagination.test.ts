@@ -2,8 +2,8 @@ import { Elysia } from 'elysia';
 
 // ── Mock Database Robust Helper ──────────────────────────────
 const mockUsers = [
-  { id: '1', fullName: 'Alice Smith', email: 'alice@example.com', isActive: true, phoneNo: null, address: null, gender: null, companyProfileId: null },
-  { id: '2', fullName: 'Bob Jones', email: 'bob@example.com', isActive: true, phoneNo: null, address: null, gender: null, companyProfileId: null },
+  { id: '1', fullName: 'Alice Smith', email: 'alice@example.com', isActive: true, phoneNo: null, address: null, gender: null, photoProfile: null, companyProfileId: null },
+  { id: '2', fullName: 'Bob Jones', email: 'bob@example.com', isActive: true, phoneNo: null, address: null, gender: null, photoProfile: null, companyProfileId: null },
 ];
 
 const createMockChain = (value: any) => {

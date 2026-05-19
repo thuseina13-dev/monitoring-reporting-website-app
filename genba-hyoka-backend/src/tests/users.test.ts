@@ -1,8 +1,10 @@
 import { Elysia } from 'elysia';
+import { describe, expect, it, mock, spyOn } from "bun:test";
+import { jwt as elysiaJwt } from '@elysiajs/jwt';
 
-// ── Mock Database Robust Helper ──────────────────────────────
+// ── Mock Data ──────────────────────────────────────────────────
 const mockUsers = [
-  { id: 'user-uuid-1', fullName: 'Administrator', email: 'admin@genba.com', isActive: true, phoneNo: null, address: null, gender: null, createdAt: new Date(), companyProfileId: null, companyProfile: null, roles: [] },
+  { id: 'user-uuid-1', fullName: 'Administrator', email: 'admin@genba.com', isActive: true, phoneNo: null, address: null, gender: null, photoProfile: null, createdAt: new Date(), companyProfileId: null, companyProfile: null, roles: [] },
 ];
 
 const createMockChain = (value: any) => {
@@ -14,7 +16,6 @@ const createMockChain = (value: any) => {
     asc: () => chain,
     desc: () => chain,
     where: () => chain,
-
     innerJoin: () => chain,
     leftJoin: () => chain,
     values: () => chain,
@@ -29,8 +30,6 @@ const createMockChain = (value: any) => {
 };
 
 // ── JWT Helper ───────────────────────────────────────────────
-import { jwt as elysiaJwt } from '@elysiajs/jwt';
-
 async function getTestToken(): Promise<string> {
   const app = new Elysia().use(elysiaJwt({ name: 'jwt', secret: process.env.JWT_SECRET ?? 'test-secret' }));
   let token = '';
@@ -47,7 +46,8 @@ async function getTestToken(): Promise<string> {
   return token;
 }
 
-// ── Mock Database ───────────────────────────────────────────
+// ── Mock Database Module ───────────────────────────────────────────
+// IMPORTANT: mock.module MUST be called before importing app modules
 mock.module("../db", () => ({
   db: {
     query: {
@@ -59,9 +59,8 @@ mock.module("../db", () => ({
     select: (fields: any) => {
         if (fields && fields.count) return createMockChain([{ count: 1 }]);
         if (fields && fields.roleId) return createMockChain([{ userId: 'user-uuid-1', roleId: 'role-1', roleName: 'Admin' }]);
-        return createMockChain([]); 
+        return createMockChain([]);
     },
-
     insert: () => createMockChain([mockUsers[0]]),
     update: () => createMockChain([mockUsers[0]]),
     delete: () => createMockChain([]),
@@ -79,12 +78,10 @@ mock.module("../db", () => ({
   checkConnection: () => Promise.resolve(true)
 }));
 
-import { describe, expect, it, mock, spyOn } from "bun:test";
-import { db } from "../db";
-
-// ── Import Modules ───────────────────────────────────────────
+// ── Import Modules AFTER DB Mock ─────────────────────────────
 import { usersModule } from '../modules/user-management/users';
 import { errorHandler } from '../middlewares/errorHandler';
+import { db } from '../db';
 
 const app = new Elysia().use(errorHandler).use(usersModule);
 
@@ -119,15 +116,29 @@ describe('Users Module - Unit Test /v1/users', () => {
     expect(body.meta.total).toBeUndefined(); // Cursor-based tidak boleh ada total
   });
 
+  it('Harus mengembalikan daftar users dengan parameter include relasi (200)', async () => {
+    const token = await getTestToken();
+    const response = await app.handle(
+      new Request('http://localhost/v1/users?include=roles,company_partner', {
+        method: 'GET',
+        headers: { Cookie: `access_token=${token}` },
+      })
+    );
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data).toBeInstanceOf(Array);
+  });
+
   it('Harus berhasil mendaftarkan user baru dengan roleIds (201)', async () => {
     const token = await getTestToken();
     const response = await app.handle(
       new Request('http://localhost/v1/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: `access_token=${token}` },
-        body: JSON.stringify({ 
-            fullName: 'User Baru', 
-            email: 'baru@genba.com', 
+        body: JSON.stringify({
+            fullName: 'User Baru',
+            email: 'baru@genba.com',
             password: 'password123',
             roleIds: ['00000000-0000-0000-0000-000000000000']
         }),
@@ -156,7 +167,6 @@ describe('Users Module - Unit Test /v1/users', () => {
   });
 
   it('PUT /v1/users/:id > Harus blokir jika user terhubung ke role super_admin (403)', async () => {
-    // Mock existence check to return user
     const selectSpy = spyOn(db, 'select');
     selectSpy.mockImplementation((() => createMockChain([{ id: 'user-super' }])) as any);
 

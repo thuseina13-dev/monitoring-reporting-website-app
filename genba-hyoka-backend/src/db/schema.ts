@@ -3,3 +3,4 @@ export * from './schemas/company';
 export * from './schemas/ws';
 export * from './schemas/notifications';
 export * from './schemas/task-definition';
+export * from './schemas/role-task';
