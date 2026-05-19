@@ -93,7 +93,6 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         }
       });
 
-      // Transform many-to-many result and rename companyProfile to companyPartner
       const finalData = userList.map(u => {
         const { userRoles, companyProfile, ...userData } = u as any;
         return {
@@ -102,7 +101,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
             companyPartner: companyProfile
           }),
           ...(includeRoles && {
-            roles: userRoles.map((ur: any) => ur.role)
+            roles: (userRoles || []).map((ur: any) => ur.role)
           })
         };
       });
@@ -166,7 +165,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
         return {
           ...userData,
           ...(includeCompany && { companyPartner: companyProfile }),
-          ...(includeRoles && { roles: userRoles.map((ur: any) => ur.role) })
+          ...(includeRoles && { roles: (userRoles || []).map((ur: any) => ur.role) })
         };
       });
 
@@ -230,7 +229,7 @@ export const usersModule = new Elysia({ prefix: '/v1/users' })
           companyPartner: companyProfile
         }),
         ...(includeRoles && {
-          roles: ur.map((item: any) => item.role)
+          roles: (ur || []).map((item: any) => item.role)
         })
       };
 

@@ -14,3 +14,9 @@ export const taskDefinitions = pgTable('task_definitions', {
 }, (table) => ({
   nameIdx: index('task_definitions_name_idx').on(table.name),
 }));
+
+import { roleTasks } from './role-task';
+
+export const taskDefinitionsRelations = relations(taskDefinitions, ({ many }) => ({
+  roleTasks: many(roleTasks),
+}));

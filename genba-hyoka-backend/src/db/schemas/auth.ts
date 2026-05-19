@@ -74,8 +74,11 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   userRoles: many(userRoles),
 }));
 
+import { roleTasks } from './role-task';
+
 export const rolesRelations = relations(roles, ({ many }) => ({
   userRoles: many(userRoles),
+  roleTasks: many(roleTasks),
 }));
 
 export const userRolesRelations = relations(userRoles, ({ one }) => ({

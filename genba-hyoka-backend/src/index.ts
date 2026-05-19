@@ -17,6 +17,7 @@ import { notificationsModule } from './modules/notifications';
 import { uploadModule } from './modules/upload';
 import { staticPlugin } from '@elysiajs/static';
 import { taskDefinitionsModule } from './modules/admin-management/task-definition';
+import { roleTasksModule } from './modules/admin-management/role-tasks';
 
 const app = new Elysia({
   websocket: {
@@ -64,6 +65,7 @@ const app = new Elysia({
   .use(notificationsModule)
   .use(uploadModule)
   .use(taskDefinitionsModule)
+  .use(roleTasksModule)
   .use(staticPlugin({
     assets: 'uploads',
     prefix: '/uploads'

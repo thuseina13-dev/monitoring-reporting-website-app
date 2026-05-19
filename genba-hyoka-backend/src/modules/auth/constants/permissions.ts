@@ -23,6 +23,7 @@ export type PermissionModule =
   | 'NFT' // Notifications
   | 'AUD' // Audit Logs
   | 'TDF' // Task Definitions
+  | 'RTS' // Role Tasks Assignment
   | 'TAS' // Tasks
   | 'SUB' // Submissions
   | 'PRB' // Problems
@@ -34,11 +35,11 @@ export type RoleCode = 'sup' | 'adm' | 'man' | 'emp';
 export const ROLE_PERMISSIONS: Record<RoleCode, Partial<Record<PermissionModule, number>>> = {
   sup: { // Super Admin
     USR: 15, ROL: 15, CPY: 15, NFT: 5, AUD: 1, 
-    TDF: 15, TAS: 15, SUB: 15, PRB: 15, REV: 15, TMP: 15 
+    TDF: 15, RTS: 15, TAS: 15, SUB: 15, PRB: 15, REV: 15, TMP: 15 
   },
   adm: { // Admin
     USR: 15, ROL: 15, CPY: 15, NFT: 5, AUD: 1,
-    TDF: 15
+    TDF: 15, RTS: 15
   },
   man: { // Manager
     USR: 1, ROL: 1, CPY: 1, NFT: 5, AUD: 1, 
