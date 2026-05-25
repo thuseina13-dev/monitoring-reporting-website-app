@@ -18,14 +18,14 @@ const editSchema: FormSchema = {
       id: "roleIds",
       label: "Pilih Role",
       type: "checkbox",
-      columns: 1,
+      columns: 3,
       data_source: {
         type: "dynamic",
         endpoint: "/roles?type_ne=super_admin",
         label_key: "name",
         value_key: "id"
       },
-      rules: { required: true, min_selections: 1 }
+      rules: { required: true, min_selections: 1, options_layout: 'horizontal' }
     },
     {
       id: "gender",

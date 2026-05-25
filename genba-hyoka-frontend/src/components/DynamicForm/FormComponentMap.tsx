@@ -958,10 +958,13 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control, disableColu
           <XStack
             key={opt.value}
             ai="center"
-            gap="$1"
-            paddingVertical="$0.5"
-            width={columns > 1 ? `${100 / columns}%` : '100%'}
-            minWidth={columns > 1 ? 80 : '100%'}
+            gap="$2"
+            paddingVertical="$1.5"
+            paddingHorizontal="$2"
+            width={columns > 1 ? 'auto' : '100%'}
+            marginRight={columns > 1 ? "$3" : "0"}
+            onPress={() => handleToggle(opt.value)}
+            pressStyle={{ opacity: 0.7 }}
           >
             <Checkbox
               id={`${fieldConfig.id}-${opt.value}`}
@@ -973,9 +976,9 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control, disableColu
                 <Check size={18} />
               </Checkbox.Indicator>
             </Checkbox>
-            <Label htmlFor={`${fieldConfig.id}-${opt.value}`} fontSize={15} color={COLORS.textMain}>
+            <Text fontSize={15} color={COLORS.textMain} userSelect="none">
               {opt.label}
-            </Label>
+            </Text>
           </XStack>
         ))}
         {options.length === 0 && !isFetching && (
@@ -1044,10 +1047,13 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnW
             <XStack
               key={opt.value}
               ai="center"
-              gap="$1"
-              paddingVertical="$0.5"
-              width={columns > 1 ? `${100 / columns}%` : '100%'}
-              minWidth={columns > 1 ? 80 : '100%'}
+              gap="$2"
+              paddingVertical="$1.5"
+              paddingHorizontal="$2"
+              width={columns > 1 ? 'auto' : '100%'}
+              marginRight={columns > 1 ? "$3" : "0"}
+              onPress={() => field.onChange(opt.value)}
+              pressStyle={{ opacity: 0.7 }}
             >
               <RadioGroup.Item
                 value={String(opt.value)}
@@ -1056,9 +1062,9 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnW
               >
                 <RadioGroup.Indicator />
               </RadioGroup.Item>
-              <Label htmlFor={`${fieldConfig.id}-${opt.value}`} fontSize={15} color={COLORS.textMain}>
+              <Text fontSize={15} color={COLORS.textMain} userSelect="none">
                 {opt.label}
-              </Label>
+              </Text>
             </XStack>
           ))}
           {options.length === 0 && !isFetching && (
