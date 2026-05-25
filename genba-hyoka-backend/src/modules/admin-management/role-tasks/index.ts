@@ -130,7 +130,7 @@ export const roleTasksModule = new Elysia({ prefix: '/v1/role-tasks' })
     async ({ body, set, currentUser }: any) => {
       // 1. Validasi keberadaan role
       const roleExists = await db.query.roles.findFirst({
-        where: eq(roles.id, body.role_id),
+        where: eq(roles.id, body.roleId),
       });
       if (!roleExists) {
         throw new AppError(404, 'Role tidak ditemukan');
@@ -138,7 +138,7 @@ export const roleTasksModule = new Elysia({ prefix: '/v1/role-tasks' })
 
       // 2. Validasi keberadaan task definition
       const taskExists = await db.query.taskDefinitions.findFirst({
-        where: and(eq(taskDefinitions.id, body.task_definition_id), isNull(taskDefinitions.deletedAt)),
+        where: and(eq(taskDefinitions.id, body.taskDefinitionId), isNull(taskDefinitions.deletedAt)),
       });
       if (!taskExists) {
         throw new AppError(404, 'Template tugas tidak ditemukan');
@@ -149,8 +149,8 @@ export const roleTasksModule = new Elysia({ prefix: '/v1/role-tasks' })
           const [inserted] = await tx
             .insert(roleTasks)
             .values({
-              roleId: body.role_id,
-              taskDefinitionId: body.task_definition_id,
+              roleId: body.roleId,
+              taskDefinitionId: body.taskDefinitionId,
             })
             .returning();
 
@@ -221,28 +221,28 @@ export const roleTasksModule = new Elysia({ prefix: '/v1/role-tasks' })
     async ({ body, set, currentUser }: any) => {
       // 1. Validasi keberadaan role
       const roleExists = await db.query.roles.findFirst({
-        where: eq(roles.id, body.role_id),
+        where: eq(roles.id, body.roleId),
       });
       if (!roleExists) {
         throw new AppError(404, 'Role tidak ditemukan');
       }
 
-      if (!body.task_definition_ids || body.task_definition_ids.length === 0) {
+      if (!body.taskDefinitionIds || body.taskDefinitionIds.length === 0) {
         return sendSuccess([], 'Tidak ada tugas yang ditambahkan');
       }
 
       // 2. Validasi keberadaan task definitions
       const tasks = await db.query.taskDefinitions.findMany({
-        where: and(inArray(taskDefinitions.id, body.task_definition_ids), isNull(taskDefinitions.deletedAt)),
+        where: and(inArray(taskDefinitions.id, body.taskDefinitionIds), isNull(taskDefinitions.deletedAt)),
       });
 
-      if (tasks.length !== body.task_definition_ids.length) {
+      if (tasks.length !== body.taskDefinitionIds.length) {
         throw new AppError(400, 'Beberapa template tugas tidak ditemukan atau sudah dihapus');
       }
 
       const assigned = await db.transaction(async (tx) => {
-        const values = body.task_definition_ids.map((taskId: string) => ({
-          roleId: body.role_id,
+        const values = body.taskDefinitionIds.map((taskId: string) => ({
+          roleId: body.roleId,
           taskDefinitionId: taskId,
         }));
 
@@ -278,31 +278,31 @@ export const roleTasksModule = new Elysia({ prefix: '/v1/role-tasks' })
     async ({ body, currentUser }: any) => {
       // 1. Validasi keberadaan role
       const roleExists = await db.query.roles.findFirst({
-        where: eq(roles.id, body.role_id),
+        where: eq(roles.id, body.roleId),
       });
       if (!roleExists) {
         throw new AppError(404, 'Role tidak ditemukan');
       }
 
-      if (body.task_definition_ids && body.task_definition_ids.length > 0) {
+      if (body.taskDefinitionIds && body.taskDefinitionIds.length > 0) {
         // 2. Validasi keberadaan task definitions
         const tasks = await db.query.taskDefinitions.findMany({
-          where: and(inArray(taskDefinitions.id, body.task_definition_ids), isNull(taskDefinitions.deletedAt)),
+          where: and(inArray(taskDefinitions.id, body.taskDefinitionIds), isNull(taskDefinitions.deletedAt)),
         });
 
-        if (tasks.length !== body.task_definition_ids.length) {
+        if (tasks.length !== body.taskDefinitionIds.length) {
           throw new AppError(400, 'Beberapa template tugas tidak ditemukan atau sudah dihapus');
         }
       }
 
       const updated = await db.transaction(async (tx) => {
         // Hapus penugasan lama untuk role ini
-        await tx.delete(roleTasks).where(eq(roleTasks.roleId, body.role_id));
+        await tx.delete(roleTasks).where(eq(roleTasks.roleId, body.roleId));
 
         let inserted: any[] = [];
-        if (body.task_definition_ids && body.task_definition_ids.length > 0) {
-          const values = body.task_definition_ids.map((taskId: string) => ({
-            roleId: body.role_id,
+        if (body.taskDefinitionIds && body.taskDefinitionIds.length > 0) {
+          const values = body.taskDefinitionIds.map((taskId: string) => ({
+            roleId: body.roleId,
             taskDefinitionId: taskId,
           }));
 

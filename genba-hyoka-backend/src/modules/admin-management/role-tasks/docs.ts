@@ -60,8 +60,8 @@ export const assignRoleTaskDocs = {
     security: [{ cookieAuth: [], csrfToken: [] }],
   },
   body: t.Object({
-    role_id: t.String(),
-    task_definition_id: t.String(),
+    roleId: t.String(),
+    taskDefinitionId: t.String(),
   }),
   response: {
     201: successResponse(t.Object({
@@ -97,8 +97,8 @@ export const assignBulkRoleTaskDocs = {
     security: [{ cookieAuth: [], csrfToken: [] }],
   },
   body: t.Object({
-    role_id: t.String(),
-    task_definition_ids: t.Array(t.String()),
+    roleId: t.String(),
+    taskDefinitionIds: t.Array(t.String()),
   }),
   response: {
     201: successResponse(t.Array(t.Object({
@@ -120,8 +120,8 @@ export const replaceBulkRoleTaskDocs = {
     security: [{ cookieAuth: [], csrfToken: [] }],
   },
   body: t.Object({
-    role_id: t.String(),
-    task_definition_ids: t.Array(t.String()),
+    roleId: t.String(),
+    taskDefinitionIds: t.Array(t.String()),
   }),
   response: {
     200: successResponse(t.Array(t.Object({

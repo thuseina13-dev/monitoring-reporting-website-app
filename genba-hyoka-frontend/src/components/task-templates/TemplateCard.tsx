@@ -73,9 +73,11 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({ template, onEdit, on
               />
             </XStack>
             <Button
-              size="$3.5"
+              size="$3"
               circular
               backgroundColor="transparent"
+              borderWidth={1}
+              borderColor={COLORS.danger}
               icon={<Trash2 size={20} color={COLORS.danger} />}
               pressStyle={{ backgroundColor: COLORS.transparent.danger }}
               onPress={() => setIsDeleteDialogOpen(true)}

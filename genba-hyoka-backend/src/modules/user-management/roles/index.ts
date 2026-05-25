@@ -30,6 +30,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
     async ({ query }: { query: any }) => {
       const includes = query.include ? query.include.split(',') : [];
       const includeUsers = includes.includes('users');
+      const includeRoleTasks = includes.includes('roleTasks');
 
       const page = query.page ?? 1;
       const limit = query.limit ?? 10;
@@ -66,16 +67,32 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
                 }
               }
             }
+          }),
+          ...(includeRoleTasks && {
+            roleTasks: {
+              with: {
+                taskDefinition: true
+              }
+            }
           })
         }
       });
 
       const finalData = roleList.map(role => {
-        const { userRoles, ...roleData } = role as any;
+        const { userRoles, roleTasks, ...roleData } = role as any;
         return {
           ...roleData,
           ...(includeUsers && {
             users: userRoles.map((ur: any) => ur.user)
+          }),
+          ...(includeRoleTasks && {
+            roleTasks: roleTasks.map((rt: any) => ({
+              id: rt.id,
+              roleId: rt.roleId,
+              taskDefinitionId: rt.taskDefinitionId,
+              createdAt: rt.createdAt,
+              taskName: rt.taskDefinition?.name
+            }))
           })
         };
       });
@@ -102,6 +119,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
     async ({ query }: { query: any }) => {
       const includes = query.include ? query.include.split(',') : [];
       const includeUsers = includes.includes('users');
+      const includeRoleTasks = includes.includes('roleTasks');
 
       const limit = query.limit ?? 10;
       const offset = undefined;
@@ -129,15 +147,31 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
                 }
               }
             }
+          }),
+          ...(includeRoleTasks && {
+            roleTasks: {
+              with: {
+                taskDefinition: true
+              }
+            }
           })
         }
       });
 
       const finalData = roleList.map(role => {
-        const { userRoles, ...roleData } = role as any;
+        const { userRoles, roleTasks, ...roleData } = role as any;
         return {
           ...roleData,
-          ...(includeUsers && { users: userRoles.map((ur: any) => ur.user) })
+          ...(includeUsers && { users: userRoles.map((ur: any) => ur.user) }),
+          ...(includeRoleTasks && {
+            roleTasks: roleTasks.map((rt: any) => ({
+              id: rt.id,
+              roleId: rt.roleId,
+              taskDefinitionId: rt.taskDefinitionId,
+              createdAt: rt.createdAt,
+              taskName: rt.taskDefinition?.name
+            }))
+          })
         };
       });
 
@@ -156,6 +190,7 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
     async ({ params, query }) => {
       const includes = query.include ? query.include.split(',') : [];
       const includeUsers = includes.includes('users');
+      const includeRoleTasks = includes.includes('roleTasks');
 
       const role = await db.query.roles.findFirst({
         where: (r, { eq, and, isNull }) => and(eq(r.id, params.id), isNull(r.deletedAt)),
@@ -176,17 +211,33 @@ export const rolesModule = new Elysia({ prefix: '/v1/roles' })
                 }
               }
             }
+          }),
+          ...(includeRoleTasks && {
+            roleTasks: {
+              with: {
+                taskDefinition: true
+              }
+            }
           })
         }
       });
 
       if (!role) throw new AppError(404, 'Role tidak ditemukan');
 
-      const { userRoles, ...roleData } = role as any;
+      const { userRoles, roleTasks, ...roleData } = role as any;
       const finalData = {
         ...roleData,
         ...(includeUsers && {
           users: userRoles.map((ur: any) => ur.user)
+        }),
+        ...(includeRoleTasks && {
+          roleTasks: roleTasks.map((rt: any) => ({
+            id: rt.id,
+            roleId: rt.roleId,
+            taskDefinitionId: rt.taskDefinitionId,
+            createdAt: rt.createdAt,
+            taskName: rt.taskDefinition?.name
+          }))
         })
       };
 
