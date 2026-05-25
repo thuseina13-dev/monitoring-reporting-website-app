@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, YStack, Text, Spinner, View } from 'tamagui';
 import { useLocalSearchParams, router } from 'expo-router';
-import { DynamicFormRenderer } from '../../../../../components/DynamicForm/DynamicFormRenderer';
-import { FormSchema } from '../../../../../components/DynamicForm/types';
+import { DynamicFormRenderer } from '../../../../../components/dynamicForm/DynamicFormRenderer';
+import { FormSchema } from '../../../../../components/dynamicForm/types';
 import ListHeader from '../../../../../components/layout/ListHeader';
 import { COLORS } from '../../../../../constants/theme';
 import { useGetUser } from '../../../../../hooks/users/useGetUser';
@@ -30,6 +30,7 @@ const editSchema: FormSchema = {
     {
       id: "gender",
       label: "Jenis Kelamin",
+      columns: 2,
       type: "radio",
       data_source: {
         type: "static",
@@ -39,7 +40,6 @@ const editSchema: FormSchema = {
         ]
       }
     },
-
     {
       id: "photoProfile", label: "Foto Profil", type: "camera",
       show_preview: true,

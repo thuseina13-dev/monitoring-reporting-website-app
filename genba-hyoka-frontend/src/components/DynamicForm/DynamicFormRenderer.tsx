@@ -24,14 +24,24 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, control, setValue 
     name: showIf?.field || '____unused____',
   });
 
-  if (showIf) {
+  if (showIf && showIf.field) {
     let isVisible = false;
-    switch (showIf.operator) {
+    const operator = showIf.operator || '=='; // Default operator
+    
+    switch (operator) {
       case '==':
-        isVisible = watchValue === showIf.value;
+        if (showIf.value === undefined) {
+          isVisible = !!watchValue; // If no value specified, just check if truthy
+        } else {
+          isVisible = watchValue === showIf.value;
+        }
         break;
       case '!=':
-        isVisible = watchValue !== showIf.value;
+        if (showIf.value === undefined) {
+          isVisible = !watchValue;
+        } else {
+          isVisible = watchValue !== showIf.value;
+        }
         break;
       case '>':
         isVisible = watchValue > showIf.value;
@@ -60,7 +70,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, control, setValue 
     return <Text color={COLORS.danger}>Unknown field type: {field.type}</Text>;
   }
 
-  return <Component fieldConfig={field} control={control} setValue={setValue} />;
+  return <Component fieldConfig={field} control={control} setValue={setValue} disableColumnWidth={true} />;
 };
 
 export interface DynamicFormRendererProps {
@@ -133,6 +143,13 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
     }
   };
 
+  const getFieldWidth = (cols: any = 3) => {
+    const numCols = Number(cols);
+    if (numCols === 1) return '30%';
+    if (numCols === 2) return '60%';
+    return '90%';
+  };
+
   return (
     <YStack gap="$2" padding="$4" backgroundColor="transparent">
       {schema.title && (
@@ -162,34 +179,46 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ schema
                     {section.title}
                   </Text>
                 )}
-                {sectionFields.map((field) => (
-                  <FieldRenderer
-                    key={field.id}
-                    field={field}
-                    control={control}
-                    setValue={setValue}
-                  />
-                ))}
+                <XStack fw="wrap" jc="flex-start" gap="$3">
+                  {sectionFields.map((field) => {
+                    const colVal = field.columns !== undefined ? Number(field.columns) : 3;
+                    return (
+                      <YStack 
+                        key={field.id} 
+                        width={getFieldWidth(colVal)}
+                        minWidth={colVal === 3 ? '90%' : 200}
+                      >
+                        <FieldRenderer
+                          field={field}
+                          control={control}
+                          setValue={setValue}
+                        />
+                      </YStack>
+                    );
+                  })}
+                </XStack>
               </YStack>
             );
           })}
         </XStack>
       ) : (
         <XStack fw="wrap" jc="flex-start" gap="$3">
-          {schema.fields.map((field) => (
-            <YStack 
-              key={field.id} 
-              width={columns > 1 ? `calc(${100 / columns}% - 12px)` : '100%'}
-              minWidth={columns > 1 ? 300 : '100%'}
-              flexGrow={1}
-            >
-              <FieldRenderer
-                field={field}
-                control={control}
-                setValue={setValue}
-              />
-            </YStack>
-          ))}
+          {schema.fields.map((field) => {
+            const colVal = field.columns !== undefined ? Number(field.columns) : 3;
+            return (
+              <YStack 
+                key={field.id} 
+                width={getFieldWidth(colVal)}
+                minWidth={colVal === 3 ? '90%' : 200}
+              >
+                <FieldRenderer
+                  field={field}
+                  control={control}
+                  setValue={setValue}
+                />
+              </YStack>
+            );
+          })}
         </XStack>
       )}
       

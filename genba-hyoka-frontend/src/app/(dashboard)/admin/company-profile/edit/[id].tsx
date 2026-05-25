@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { YStack, Text, Spinner } from 'tamagui';
-import { DynamicFormRenderer, FormSchema } from '../../../../../components/DynamicForm';
+import { DynamicFormRenderer, FormSchema } from '../../../../../components/dynamicForm';
 import { useGetCompanyById } from '../../../../../hooks/companies/useGetCompanyById';
 import { useUpdateCompany } from '../../../../../hooks/companies/useUpdateCompany';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -77,7 +77,7 @@ export default function EditCompanyProfilePage() {
   const handleSubmit = (data: any) => {
     const payload = {
       ...data,
-      logo: typeof data.logo === 'string' ? data.logo : '', 
+      logo: typeof data.logo === 'string' ? data.logo : '',
     };
 
     updateCompany({ id, data: payload }, {
@@ -105,7 +105,7 @@ export default function EditCompanyProfilePage() {
           <Text color={COLORS.textSecondary} textAlign="center" fontSize={14}>
             Perbarui informasi profil perusahaan di bawah ini.
           </Text>
-          
+
           {isUpdating && (
             <YStack ai="center" jc="center" padding="$4">
               <Spinner size="large" color="$orange10" />
@@ -113,10 +113,10 @@ export default function EditCompanyProfilePage() {
             </YStack>
           )}
 
-          <DynamicFormRenderer 
-            schema={companyProfileSchema} 
-            initialValues={company?.data} 
-            onSubmit={handleSubmit} 
+          <DynamicFormRenderer
+            schema={companyProfileSchema}
+            initialValues={company?.data}
+            onSubmit={handleSubmit}
             onCancel={() => router.back()}
           />
         </YStack>

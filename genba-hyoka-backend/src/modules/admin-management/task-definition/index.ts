@@ -119,9 +119,9 @@ export const taskDefinitionsModule = new Elysia({ prefix: '/v1/task-definitions'
             name: body.name,
             description: body.description || null,
             procedures: body.procedures || null,
-            formSchema: body.form_schema,
-            isActive: body.is_active !== undefined ? body.is_active : true,
-            isMandatory: body.is_mandatory !== undefined ? body.is_mandatory : false,
+            formSchema: body.formSchema,
+            isActive: body.isActive !== undefined ? body.isActive : true,
+            isMandatory: body.isMandatory !== undefined ? body.isMandatory : false,
             createdBy: currentUser.id,
           })
           .returning();
@@ -139,8 +139,8 @@ export const taskDefinitionsModule = new Elysia({ prefix: '/v1/task-definitions'
       return sendSuccess({
         id: newTask.id,
         name: newTask.name,
-        is_active: newTask.isActive,
-        created_at: newTask.createdAt.toISOString(),
+        isActive: newTask.isActive,
+        createdAt: newTask.createdAt.toISOString(),
       }, 'Template tugas berhasil dibuat');
     },
     {
@@ -172,9 +172,9 @@ export const taskDefinitionsModule = new Elysia({ prefix: '/v1/task-definitions'
         if (body.name !== undefined) updateData.name = body.name;
         if (body.description !== undefined) updateData.description = body.description;
         if (body.procedures !== undefined) updateData.procedures = body.procedures;
-        if (body.form_schema !== undefined) updateData.formSchema = body.form_schema;
-        if (body.is_active !== undefined) updateData.isActive = body.is_active;
-        if (body.is_mandatory !== undefined) updateData.isMandatory = body.is_mandatory;
+        if (body.formSchema !== undefined) updateData.formSchema = body.formSchema;
+        if (body.isActive !== undefined) updateData.isActive = body.isActive;
+        if (body.isMandatory !== undefined) updateData.isMandatory = body.isMandatory;
 
         const [res] = await tx
           .update(taskDefinitions)

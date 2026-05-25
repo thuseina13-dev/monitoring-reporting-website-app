@@ -242,15 +242,15 @@ describe('Task Definitions Module - Unit Test', () => {
             execution_policy: { instructions: 'Matikan AC', start_at: '10:00', duration_hours: 1, start_time_ref: 'on_started', is_mandatory: false },
             workflow: { requires_review: false, approval_role: [] }
           },
-          form_schema: {
+          formSchema: {
             type: 'object',
             properties: {
               suhu_ac: { type: 'number', title: 'Suhu AC' }
             },
             required: ['suhu_ac']
           },
-          is_active: true,
-          is_mandatory: false
+          isActive: true,
+          isMandatory: false
         })
       })
     );
@@ -261,7 +261,7 @@ describe('Task Definitions Module - Unit Test', () => {
     expect(body.data.name).toBe('Inspeksi Panel Listrik Bulanan'); // returns mock
   });
 
-  it('POST /v1/task-definitions > Harus 422 Unprocessable Entity jika form_schema kosong', async () => {
+  it('POST /v1/task-definitions > Harus 422 Unprocessable Entity jika formSchema kosong', async () => {
     const token = await getAdminToken();
     const response = await app.handle(
       new Request('http://localhost/v1/task-definitions', {
@@ -289,7 +289,7 @@ describe('Task Definitions Module - Unit Test', () => {
         },
         body: JSON.stringify({
           name: 'Inspeksi Panel Listrik Bulanan V2',
-          is_active: false
+          isActive: false
         })
       })
     );

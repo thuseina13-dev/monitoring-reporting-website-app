@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { YStack, Text, Spinner } from 'tamagui';
-import { DynamicFormRenderer, FormSchema } from '../../../../../components/DynamicForm';
+import { DynamicFormRenderer, FormSchema } from '../../../../../components/dynamicForm';
 import { useGetRoleById } from '../../../../../hooks/roles/useGetRoleById';
 import { useUpdateRole } from '../../../../../hooks/roles/useUpdateRole';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -81,7 +81,7 @@ export default function EditRolePage() {
           <Text color={COLORS.textSecondary} textAlign="center" fontSize={14}>
             Perbarui informasi role di bawah ini.
           </Text>
-          
+
           {isUpdating && (
             <YStack ai="center" jc="center" padding="$4">
               <Spinner size="large" color="$orange10" />
@@ -89,10 +89,10 @@ export default function EditRolePage() {
             </YStack>
           )}
 
-          <DynamicFormRenderer 
-            schema={roleSchema} 
-            initialValues={role?.data} 
-            onSubmit={handleSubmit} 
+          <DynamicFormRenderer
+            schema={roleSchema}
+            initialValues={role?.data}
+            onSubmit={handleSubmit}
             onCancel={() => router.back()}
           />
         </YStack>

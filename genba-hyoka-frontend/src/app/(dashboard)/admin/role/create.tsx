@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { YStack, Text, Spinner } from 'tamagui';
-import { DynamicFormRenderer, FormSchema } from '../../../../components/DynamicForm';
+import { DynamicFormRenderer, FormSchema } from '../../../../components/dynamicForm';
 import { useCreateRole } from '../../../../hooks/roles/useCreateRole';
 import { router } from 'expo-router';
 import ListHeader from '../../../../components/layout/ListHeader';
@@ -69,10 +69,10 @@ export default function CreateRolePage() {
           <Text color="$colorFocus" textAlign="center" fontSize={14}>
             Lengkapi data di bawah ini untuk membuat role baru.
           </Text>
-          
-          <DynamicFormRenderer 
-            schema={roleSchema} 
-            onSubmit={handleSubmit} 
+
+          <DynamicFormRenderer
+            schema={roleSchema}
+            onSubmit={handleSubmit}
             onCancel={() => router.back()}
             isLoading={isPending}
           />

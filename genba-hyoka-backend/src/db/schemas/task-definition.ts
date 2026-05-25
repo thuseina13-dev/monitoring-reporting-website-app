@@ -4,7 +4,7 @@ import { auditColumns } from './_utils/audit';
 
 export const taskDefinitions = pgTable('task_definitions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  name: varchar('name', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull().unique(),
   description: varchar('description', { length: 255 }),
   procedures: jsonb('procedures'),
   formSchema: jsonb('form_schema').notNull(),

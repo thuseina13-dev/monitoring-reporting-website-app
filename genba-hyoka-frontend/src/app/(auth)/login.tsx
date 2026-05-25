@@ -13,8 +13,8 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useToastController } from '@tamagui/toast';
 import { COLORS } from '../../constants/theme';
 import LogoTumpuk from '../../assets/images/logo-tumpuk-compress-removebg-preview.png';
-import { DynamicFormRenderer } from '../../components/DynamicForm/DynamicFormRenderer';
-import { FormSchema } from '../../components/DynamicForm/types';
+import { DynamicFormRenderer } from '../../components/dynamicForm/DynamicFormRenderer';
+import { FormSchema } from '../../components/dynamicForm/types';
 
 import { parseBackendError } from '../../utils/errorParser';
 
@@ -32,7 +32,7 @@ export default function LoginScreen() {
           native: false,
         });
       }, 100);
-      
+
       router.replace('/(auth)/login');
     }
   }, [params.logout]);
@@ -93,7 +93,7 @@ export default function LoginScreen() {
 
   return (
     <YStack f={1} bc={COLORS.pageBackground} jc="center" ai="center" p="$4">
-      <Stack.Screen options={{ title: 'Halaman Login', headerShown: false }} /> 
+      <Stack.Screen options={{ title: 'Halaman Login', headerShown: false }} />
       <Card
         elevation={5}
         p="$8"
@@ -114,7 +114,7 @@ export default function LoginScreen() {
             />
           </View>
 
-          <DynamicFormRenderer 
+          <DynamicFormRenderer
             schema={loginFormSchema}
             onSubmit={onSubmit}
             isLoading={loginMutation.isPending}

@@ -9,19 +9,30 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Location from 'expo-location';
-import SignatureScreen, { SignatureViewRef } from 'react-native-signature-canvas';
+import SignaturePad from './SignaturePad';
 import { Platform, ActivityIndicator, Image, Linking } from 'react-native';
 import { storageService } from '../../services/api/storageService';
 import { useToastController } from '@tamagui/toast';
 
 import { COLORS } from '../../constants/theme';
 import { getImageUrl } from '@/utils/getImageUrl';
+import { WebDatePicker } from './WebDatePicker';
+import { WebCamera } from './WebCamera';
 
 export interface FieldProps {
   fieldConfig: FormField;
   control: Control<any>;
   setValue: UseFormSetValue<any>;
+  disableColumnWidth?: boolean;
 }
+
+const getFieldWidth = (cols: any) => {
+  if (cols === undefined) return '90%';
+  const numCols = Number(cols);
+  if (numCols === 1) return '30%';
+  if (numCols === 2) return '60%';
+  return '90%';
+};
 
 const transformRules = (rules: any, label: string) => {
   if (!rules) return {};
@@ -73,13 +84,22 @@ const transformRules = (rules: any, label: string) => {
     };
   }
 
-  if (rules.min_selections) {
+  if (rules.min_selections || rules.max_selections) {
     transformed.validate = (value: any) => {
-      if (Array.isArray(value) && value.length < rules.min_selections) {
-        return `Minimal pilih ${rules.min_selections} opsi`;
+      const len = Array.isArray(value) ? value.length : 0;
+      const minVal = rules.min_selections ? Number(rules.min_selections) : undefined;
+      const maxVal = rules.max_selections ? Number(rules.max_selections) : undefined;
+
+      if (minVal !== undefined && !isNaN(minVal) && len < minVal) {
+        return `Minimal pilih ${minVal} opsi`;
+      }
+      if (maxVal !== undefined && !isNaN(maxVal) && len > maxVal) {
+        return `Maksimal pilih ${maxVal} opsi`;
       }
       return true;
     };
+  } else if (rules.validate) {
+    transformed.validate = rules.validate;
   }
 
   return transformed;
@@ -106,12 +126,15 @@ const validateFile = (asset: any, rules: any, label: string, toast: any, onInval
 
   if (rules?.allowed_extensions && rules.allowed_extensions.length > 0) {
     const fileName = (asset.name || asset.fileName || asset.uri.split('/').pop() || '').toLowerCase();
-    const isAllowed = rules.allowed_extensions.some((ext: string) =>
-      fileName.endsWith(ext.toLowerCase())
+    const normalizedAllowed = rules.allowed_extensions.map((ext: string) =>
+      ext.replace(/^\./, '').toLowerCase()
     );
+    const fileExt = fileName.split('.').pop() || '';
+    const isAllowed = normalizedAllowed.includes(fileExt);
     if (!isAllowed) {
+      const displayExtensions = normalizedAllowed.map((ext: string) => ext.toUpperCase()).join(', ');
       toast.show('Format Tidak Didukung', {
-        message: `${label}: Harus ${rules.allowed_extensions.join(', ')}`,
+        message: `${label}: Harus ${displayExtensions}`,
         type: 'error',
       });
       onInvalid?.();
@@ -129,7 +152,7 @@ const ICON_MAP: Record<string, any> = {
   phone: Smartphone,
 };
 
-const InputText: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputText: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
@@ -140,7 +163,7 @@ const InputText: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const isPassword = fieldConfig.type === 'password';
 
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
@@ -191,7 +214,7 @@ const InputText: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   );
 };
 
-const InputTextArea: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputTextArea: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
@@ -199,7 +222,7 @@ const InputTextArea: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   });
 
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
@@ -222,7 +245,7 @@ const InputTextArea: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   );
 };
 
-const InputNumber: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputNumber: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
@@ -230,7 +253,7 @@ const InputNumber: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   });
 
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
@@ -238,7 +261,10 @@ const InputNumber: React.FC<FieldProps> = ({ fieldConfig, control }) => {
       <Input
         id={fieldConfig.id}
         value={field.value ? String(field.value) : ''}
-        onChangeText={(val) => field.onChange(val.replace(/[^0-9]/g, ''))}
+        onChangeText={(val) => {
+          const regex = fieldConfig.rules?.allow_decimal ? /[^0-9.]/g : /[^0-9]/g;
+          field.onChange(val.replace(regex, ''));
+        }}
         onBlur={field.onBlur}
         keyboardType="numeric"
         disabled={fieldConfig.is_locked}
@@ -255,7 +281,7 @@ const InputNumber: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   );
 };
 
-const InputDateTime: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputDateTime: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
@@ -272,44 +298,119 @@ const InputDateTime: React.FC<FieldProps> = ({ fieldConfig, control }) => {
     }
   };
 
+  const dateType = fieldConfig.rules?.date_type || 'datetime-local';
+
+  const handleWebChange = (e: any) => {
+    const value = e.target.value;
+    if (!value) {
+      field.onChange('');
+      return;
+    }
+
+    try {
+      if (dateType === 'time') {
+        const [hours, minutes] = value.split(':');
+        const d = new Date();
+        d.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        field.onChange(d.toISOString());
+      } else if (dateType === 'date') {
+        const d = new Date(`${value}T00:00:00`);
+        field.onChange(d.toISOString());
+      } else {
+        field.onChange(new Date(value).toISOString());
+      }
+    } catch (err) {
+      console.error('Invalid date', err);
+    }
+  };
+
+  const getMinDate = () => {
+    if (fieldConfig.rules?.min_date) return new Date(fieldConfig.rules.min_date);
+    return undefined;
+  };
+
+  const getMaxDate = () => {
+    const disableFuture = fieldConfig.rules?.disable_future_dates as any;
+    if (disableFuture === true || disableFuture === 'true') return new Date();
+    if (fieldConfig.rules?.max_date) return new Date(fieldConfig.rules.max_date);
+    return undefined;
+  };
+
+  const formatForWeb = (isoString?: string | Date) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return '';
+    const tzoffset = date.getTimezoneOffset() * 60000;
+    const localIso = new Date(date.getTime() - tzoffset).toISOString();
+
+    if (dateType === 'date') return localIso.slice(0, 10);
+    if (dateType === 'time') return localIso.slice(11, 16);
+    return localIso.slice(0, 16);
+  };
+
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
-      <Button
-        onPress={() => setShow(true)}
-        disabled={fieldConfig.is_locked}
-        borderColor={fieldState.error ? COLORS.danger : undefined}
-        borderWidth={fieldState.error ? 1 : 0}
-      >
-        {field.value ? new Date(field.value).toLocaleString() : 'Pilih Tanggal & Waktu'}
-      </Button>
-      {show && (
-        <DateTimePicker
-          value={dateValue}
-          mode="datetime"
-          is24Hour={true}
-          onChange={onChange}
+
+      {Platform.OS === 'web' ? (
+        <WebDatePicker
+          type={dateType}
+          value={formatForWeb(field.value)}
+          onChange={handleWebChange}
+          disabled={fieldConfig.is_locked}
+          min={formatForWeb(getMinDate())}
+          max={formatForWeb(getMaxDate())}
+          hasError={!!fieldState.error}
         />
+      ) : (
+        <>
+          <Button
+            onPress={() => setShow(true)}
+            disabled={fieldConfig.is_locked}
+            borderColor={fieldState.error ? COLORS.danger : undefined}
+            borderWidth={fieldState.error ? 1 : 0}
+          >
+            {field.value ? new Date(field.value).toLocaleString() : 'Pilih Tanggal & Waktu'}
+          </Button>
+          {show && (
+            <DateTimePicker
+              value={dateValue}
+              mode={dateType === 'datetime-local' ? 'datetime' : dateType}
+              is24Hour={true}
+              onChange={onChange}
+              minimumDate={getMinDate()}
+              maximumDate={getMaxDate()}
+            />
+          )}
+        </>
       )}
+
       <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
 
-const InputMap: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputMap: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
     rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
+  const toast = useToastController();
   const [loading, setLoading] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
-  const getLocation = async () => {
-    const toast = useToastController();
+  useEffect(() => {
+    if (fieldConfig.rules?.fetch_method === 'auto' && !field.value) {
+      getLocation(false); // Do not auto popup on initial background load
+    }
+  }, []);
+
+  const getLocation = async (shouldPopup = true) => {
     setLoading(true);
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -321,8 +422,16 @@ const InputMap: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({});
-      field.onChange(`${location.coords.latitude}, ${location.coords.longitude}`);
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Platform.OS === 'web' ? Location.Accuracy.Balanced : Location.Accuracy.High,
+      });
+      const coordsStr = `${location.coords.latitude}, ${location.coords.longitude}`;
+      field.onChange(coordsStr);
+      
+      // Open map modal ONLY if explicitly requested/triggered
+      if (shouldPopup) {
+        setMapOpen(true);
+      }
     } catch (error) {
       console.error(error);
       toast.show('Gagal', {
@@ -334,23 +443,140 @@ const InputMap: React.FC<FieldProps> = ({ fieldConfig, control }) => {
     }
   };
 
+  const isAuto = fieldConfig.rules?.fetch_method === 'auto';
+
+  const [lat, lon] = field.value && typeof field.value === 'string'
+    ? field.value.split(',').map((s: string) => parseFloat(s.trim()))
+    : [null, null];
+
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
-      <Button
-        icon={MapPin}
-        onPress={getLocation}
-        disabled={fieldConfig.is_locked || loading}
-        borderColor={fieldState.error ? COLORS.danger : undefined}
-        borderWidth={fieldState.error ? 1 : 0}
-      >
-        {loading ? 'Mengambil Lokasi...' : 'Dapatkan Lokasi'}
-      </Button>
-      {field.value ? <Text color={COLORS.success} fontSize={12}>Koordinat: {field.value}</Text> : null}
+      
+      {isAuto ? (
+        // Auto-fetch Layout
+        field.value ? (
+          <Button
+            icon={Eye}
+            onPress={() => setMapOpen(true)}
+            theme="active"
+            bg="$blue8"
+            hoverStyle={{ backgroundColor: "$blue10" }}
+            width="100%"
+          >
+            Lihat Peta Lokasi
+          </Button>
+        ) : loading ? (
+          <XStack gap="$2.5" alignItems="center" bg="$backgroundHover" p="$2.5" br="$3" bw={1} bc={COLORS.borderLight || "$borderColor"} jc="center" h={50}>
+            <ActivityIndicator size="small" color={COLORS.primary || "#0088ff"} />
+            <Text fontSize={13} color="$textMuted" fontWeight="600">Mendeteksi Lokasi Otomatis...</Text>
+          </XStack>
+        ) : (
+          <XStack gap="$2" alignItems="center" bg="$backgroundHover" p="$2.5" br="$3" bw={1} bc="$red5" jc="space-between" h={50}>
+            <Text fontSize={13} color={COLORS.danger || "$red10"} fontWeight="600">Gagal mendeteksi lokasi otomatis</Text>
+            <Button size="$2" theme="alt1" icon={MapPin} onPress={() => getLocation(true)}>Coba Lagi</Button>
+          </XStack>
+        )
+      ) : (
+        // Manual-fetch Layout
+        <XStack gap="$2" alignItems="center">
+          <Button
+            icon={MapPin}
+            onPress={() => getLocation(true)}
+            disabled={fieldConfig.is_locked || loading}
+            borderColor={fieldState.error ? COLORS.danger : undefined}
+            borderWidth={fieldState.error ? 1 : 0}
+            flex={1}
+          >
+            {loading ? 'Mengambil Lokasi...' : 'Dapatkan Lokasi'}
+          </Button>
+          {field.value && (
+            <Button
+              icon={Eye}
+              onPress={() => setMapOpen(true)}
+              theme="active"
+              bg="$blue8"
+              hoverStyle={{ backgroundColor: "$blue10" }}
+            >
+              Lihat Peta
+            </Button>
+          )}
+        </XStack>
+      )}
+      
+      {field.value ? <Text color={COLORS.success} fontSize={12} mt="$1">Koordinat: {field.value}</Text> : null}
       <ErrorMessage error={fieldState.error} />
+
+      {mapOpen && lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon) && (
+        <Dialog modal open={mapOpen} onOpenChange={setMapOpen}>
+          <Portal>
+            <Dialog.Overlay key="overlay" opacity={0.5} />
+            <Dialog.Content 
+              bordered 
+              elevate 
+              key="content" 
+              gap="$1.5" 
+              width="90%" 
+              maxWidth={600}
+              height="60%"
+              maxHeight={500}
+              padding="$0"
+              overflow="hidden"
+              alignSelf="center"
+              top={0}
+              bottom={0}
+              left={0}
+              right={0}
+              margin="auto"
+              x={0}
+              y={0}
+            >
+              <XStack 
+                padding="$3" 
+                borderBottomWidth={1} 
+                borderColor={COLORS.borderLight || "$borderColor"} 
+                jc="space-between" 
+                ai="center" 
+                backgroundColor={COLORS.bgSoft || "$backgroundHover"}
+              >
+                <Dialog.Title margin={0} fontSize={16} fontWeight="bold" color={COLORS.textMain || "$color"}>Peta Lokasi Anda</Dialog.Title>
+                <Button size="$3" circular chromeless icon={<X color={COLORS.textMuted || "$color"} />} onPress={() => setMapOpen(false)} />
+              </XStack>
+
+              <YStack flex={1} padding="$3" backgroundColor="$background">
+                <Dialog.Description mb="$3" fontSize={13} color="$textMuted">Koordinat: {lat}, {lon}</Dialog.Description>
+                
+                <YStack flex={1} backgroundColor="$background" borderWidth={1} borderColor="$borderColor" borderRadius="$3" overflow="hidden">
+                  {Platform.OS === 'web' ? (
+                    <iframe
+                      title="Peta Lokasi Geolocation"
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      scrolling="no"
+                      marginHeight={0}
+                      marginWidth={0}
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.003}%2C${lat - 0.003}%2C${lon + 0.003}%2C${lat + 0.003}&layer=mapnik&marker=${lat}%2C${lon}`}
+                      className="map-iframe"
+                    />
+                  ) : (
+                    <YStack flex={1} ai="center" jc="center" gap="$3" padding="$4">
+                      <MapPin size={48} color={COLORS.primary} />
+                      <Text textAlign="center">Aplikasi mendeteksi koordinat Anda di {lat}, {lon}.</Text>
+                      <Button onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`)}>
+                        Buka di Google Maps
+                      </Button>
+                    </YStack>
+                  )}
+                </YStack>
+              </YStack>
+            </Dialog.Content>
+          </Portal>
+        </Dialog>
+      )}
     </YStack>
   );
 };
@@ -411,7 +637,7 @@ const PreviewDialog = ({ open, setOpen, uri }: { open: boolean, setOpen: (val: b
   );
 };
 
-const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputFile: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
@@ -433,7 +659,7 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
       const fullUrl = uri.startsWith('http') || uri.startsWith('data:') || uri.startsWith('file:')
         ? uri
         : getImageUrl(uri);
-        console.log('full url', fullUrl)
+      console.log('full url', fullUrl)
       Linking.openURL(fullUrl);
     }
   };
@@ -453,22 +679,18 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
           return;
         }
 
-        setUploading(true);
-        try {
-          const modelName = fieldConfig.rules?.model_name || 'general';
-          const isPublic = fieldConfig.rules?.is_public === true;
-          
-          const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
-          field.onChange(uploadResult.data.file_url);
-        } catch (error: any) {
-          toast.show('Upload Gagal', {
-            message: error.response?.data?.message || error.message,
-            type: 'error',
-          });
-          field.onChange('');
-        } finally {
-          setUploading(false);
-        }
+        const modelName = fieldConfig.rules?.model_name || 'general';
+        const isPublic = fieldConfig.rules?.is_public === true;
+
+        // Defer upload: store file info for later submission
+        field.onChange({
+          uri: asset.uri,
+          name: asset.name || (asset as any).fileName || asset.uri.split('/').pop(),
+          type: asset.mimeType || (asset as any).type || 'application/octet-stream',
+          isFileObject: true,
+          modelName,
+          isPublic,
+        });
       }
     } catch (error) {
       console.error(error);
@@ -476,7 +698,7 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   };
 
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
@@ -525,7 +747,7 @@ const InputFile: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   );
 };
 
-const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
@@ -533,7 +755,7 @@ const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   });
 
   const [open, setOpen] = useState(false);
-  const ref = useRef<SignatureViewRef>(null);
+  const ref = useRef<any>(null);
 
   const handleOK = (signature: string) => {
     field.onChange(signature);
@@ -541,7 +763,7 @@ const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   };
 
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
@@ -558,42 +780,97 @@ const InputSignature: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         Buka Pad Tanda Tangan
       </Button>
 
-      {field.value ? <Text color={COLORS.success} fontSize={12}>Tanda tangan tersimpan</Text> : null}
+      {field.value ? (
+        <YStack mt="$2.5" p="$3" br="$3" bg="$backgroundHover" ai="center" gap="$2.5" bw={1} bc={COLORS.borderLight || "$borderColor"} position="relative">
+          <Button 
+            size="$2" 
+            circular 
+            backgroundColor="$red8" 
+            icon={<X color="#ffffff" size={14} />} 
+            position="absolute" 
+            top={8} 
+            right={8} 
+            zIndex={10} 
+            onPress={() => field.onChange('')}
+            accessibilityLabel="Hapus Tanda Tangan"
+            hoverStyle={{ backgroundColor: "$red10" }}
+          />
+          <Text color={COLORS.success} fontSize={12} fontWeight="600">Tanda Tangan Tersimpan:</Text>
+          <Image 
+            source={{ uri: field.value }} 
+            style={{ 
+              width: 240, 
+              height: 100, 
+              resizeMode: 'contain', 
+              backgroundColor: '#ffffff', 
+              borderRadius: 6, 
+              borderWidth: 1, 
+              borderColor: COLORS.borderLight || '#dddddd' 
+            }} 
+          />
+        </YStack>
+      ) : null}
 
-      <Dialog modal open={open} onOpenChange={setOpen}>
-        <Portal>
-          <Dialog.Overlay key="overlay" opacity={0.5} />
-          <Dialog.Content bordered elevate key="content" gap="$1" width="90%" height="60%">
-            <Dialog.Title>Tanda Tangan</Dialog.Title>
-            <Dialog.Description>Silakan tanda tangan di bawah ini</Dialog.Description>
+      {open && (
+        <Dialog modal open={open} onOpenChange={setOpen}>
+          <Portal>
+            <Dialog.Overlay key="overlay" opacity={0.5} />
+            <Dialog.Content 
+              bordered 
+              elevate 
+              key="content" 
+              gap="$1.5" 
+              width="90%" 
+              height="60%"
+              padding="$0"
+              overflow="hidden"
+              alignSelf="center"
+              top={0}
+              bottom={0}
+              left={0}
+              right={0}
+              margin="auto"
+              x={0}
+              y={0}
+            >
+              <XStack 
+                padding="$3" 
+                borderBottomWidth={1} 
+                borderColor={COLORS.borderLight || "$borderColor"} 
+                jc="space-between" 
+                ai="center" 
+                backgroundColor={COLORS.bgSoft || "$backgroundHover"}
+              >
+                <Dialog.Title margin={0} fontSize={16} fontWeight="bold" color={COLORS.textMain || "$color"}>Pad Tanda Tangan</Dialog.Title>
+                <Button size="$3" circular chromeless icon={<X color={COLORS.textMuted || "$color"} />} onPress={() => setOpen(false)} />
+              </XStack>
 
-            <YStack flex={1} backgroundColor="$background" borderWidth={1} borderColor="$borderColor">
-              <SignatureScreen
-                ref={ref}
-                onOK={handleOK}
-                descriptionText="Tanda Tangan"
-                clearText="Hapus"
-                confirmText="Simpan"
-                webStyle={`.m-signature-pad--footer {display: none; margin: 0;}`}
-              />
-            </YStack>
+              <YStack flex={1} padding="$3" backgroundColor="$background">
+                <Dialog.Description mb="$3" fontSize={13} color="$textMuted">Silakan goreskan tanda tangan Anda di bawah ini:</Dialog.Description>
+                
+                <YStack flex={1} backgroundColor="$background" borderWidth={1} borderColor="$borderColor" borderRadius="$3" overflow="hidden">
+                  <SignaturePad
+                    ref={ref}
+                    onOK={handleOK}
+                    defaultValue={field.value}
+                  />
+                </YStack>
 
-            <XStack gap="$1" justifyContent="flex-end">
-              <Button onPress={() => ref.current?.clearSignature()} theme="alt1">Hapus</Button>
-              <Button onPress={() => ref.current?.readSignature()} theme="active">Simpan</Button>
-              <Dialog.Close asChild>
-                <Button icon={X} chromeless circular position="absolute" top="$-3" right="$-3" />
-              </Dialog.Close>
-            </XStack>
-          </Dialog.Content>
-        </Portal>
-      </Dialog>
+                <XStack gap="$2" justifyContent="flex-end" marginTop="$3">
+                  <Button size="$3.5" onPress={() => ref.current?.clearSignature()} theme="alt1">Hapus Coretan</Button>
+                  <Button size="$3.5" onPress={() => ref.current?.readSignature()} theme="active">Simpan Tanda Tangan</Button>
+                </XStack>
+              </YStack>
+            </Dialog.Content>
+          </Portal>
+        </Dialog>
+      )}
       <ErrorMessage error={fieldState.error} />
     </YStack>
   );
 };
 
-const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
@@ -603,7 +880,8 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   const dataSource = fieldConfig.data_source;
   const isDynamic = dataSource?.type === 'dynamic';
   const hasDataSource = !!dataSource;
-  const columns = fieldConfig.columns || 1;
+  const isHorizontal = fieldConfig.rules?.options_layout === 'horizontal';
+  const columns = isHorizontal ? 3 : 1;
 
   const { data, isFetching } = useInfiniteQuery({
     queryKey: ['checkbox-group', isDynamic ? dataSource.endpoint : 'static'],
@@ -631,7 +909,7 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
 
   if (!hasDataSource) {
     return (
-      <YStack gap="$1" mb="$2">
+      <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
         <XStack gap="$1" ai="center">
           <Checkbox
             id={fieldConfig.id}
@@ -664,7 +942,7 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   };
 
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
@@ -683,7 +961,7 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
             gap="$1"
             paddingVertical="$0.5"
             width={columns > 1 ? `${100 / columns}%` : '100%'}
-            minWidth={columns > 1 ? 120 : '100%'}
+            minWidth={columns > 1 ? 80 : '100%'}
           >
             <Checkbox
               id={`${fieldConfig.id}-${opt.value}`}
@@ -710,7 +988,7 @@ const InputCheckbox: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   );
 };
 
-const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
@@ -719,7 +997,8 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control }) => {
 
   const dataSource = fieldConfig.data_source;
   const isDynamic = dataSource?.type === 'dynamic';
-  const columns = fieldConfig.columns || 1;
+  const isHorizontal = fieldConfig.rules?.options_layout === 'horizontal';
+  const columns = isHorizontal ? 3 : 1;
 
   const { data, isFetching } = useInfiniteQuery({
     queryKey: ['radio-group', isDynamic ? dataSource.endpoint : 'static'],
@@ -745,7 +1024,7 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   }, [isDynamic, data, dataSource]);
 
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
@@ -768,7 +1047,7 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control }) => {
               gap="$1"
               paddingVertical="$0.5"
               width={columns > 1 ? `${100 / columns}%` : '100%'}
-              minWidth={columns > 1 ? 120 : '100%'}
+              minWidth={columns > 1 ? 80 : '100%'}
             >
               <RadioGroup.Item
                 value={String(opt.value)}
@@ -793,16 +1072,21 @@ const InputRadio: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   );
 };
 
-const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
     rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
+  useEffect(() => {
+    if (fieldConfig.default_value !== undefined && (field.value === undefined || field.value === '')) {
+      field.onChange(fieldConfig.default_value);
+    }
+  }, [fieldConfig.default_value]);
+
   const dataSource = fieldConfig.data_source;
   const isDynamic = dataSource?.type === 'dynamic';
-
   const { data } = useInfiniteQuery({
     queryKey: ['dropdown-options', isDynamic ? dataSource.endpoint : 'static'],
     queryFn: async () => {
@@ -827,7 +1111,7 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   }, [isDynamic, data, dataSource]);
 
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
@@ -903,15 +1187,17 @@ const InputDropdown: React.FC<FieldProps> = ({ fieldConfig, control }) => {
   );
 };
 
-const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field, fieldState } = useController({
     name: fieldConfig.id,
     control,
     rules: transformRules(fieldConfig.rules, fieldConfig.label),
   });
 
+  const toast = useToastController();
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [showWebCamera, setShowWebCamera] = useState(false);
 
   const handlePreviewAction = () => {
     if (!field.value) return;
@@ -930,8 +1216,58 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
     }
   };
 
-  const toast = useToastController();
+  const allowGallery = fieldConfig.rules?.allow_gallery ?? false;
+
   const takePhoto = async () => {
+    if (Platform.OS === 'web') {
+      setShowWebCamera(true);
+      return;
+    }
+
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        toast.show('Izin Ditolak', {
+          message: 'Akses kamera diperlukan untuk mengambil foto',
+          type: 'error',
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        const cameraRules = {
+          ...fieldConfig.rules,
+          allowed_extensions: ['jpg', 'jpeg', 'png', 'jgp']
+        };
+        if (!validateFile(asset, cameraRules, fieldConfig.label, toast, () => field.onChange(''))) {
+          return;
+        }
+        const modelName = fieldConfig.rules?.model_name || 'general';
+        const isPublic = fieldConfig.rules?.is_public === true;
+        // Defer upload: store file info for later submission
+        field.onChange({
+          uri: asset.uri,
+          name: asset.fileName || asset.uri.split('/').pop(),
+          type: asset.type || 'image/jpeg',
+          isFileObject: true,
+          modelName,
+          isPublic,
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const pickFromGallery = async () => {
+    if (!allowGallery) return;
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -942,7 +1278,7 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
         return;
       }
 
-      let result = await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 1,
@@ -950,48 +1286,83 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
 
       if (!result.canceled) {
         const asset = result.assets[0];
-
-        if (!validateFile(asset, fieldConfig.rules, fieldConfig.label, toast, () => field.onChange(''))) {
+        const cameraRules = {
+          ...fieldConfig.rules,
+          allowed_extensions: ['jpg', 'jpeg', 'png', 'jgp']
+        };
+        if (!validateFile(asset, cameraRules, fieldConfig.label, toast, () => field.onChange(''))) {
           return;
         }
-
-        setUploading(true);
-        try {
-          const modelName = fieldConfig.rules?.model_name || 'general';
-          const isPublic = fieldConfig.rules?.is_public === true;
-          
-          const uploadResult = await storageService.upload(asset.uri, modelName, isPublic);
-          field.onChange(uploadResult.data.file_url);
-        } catch (error: any) {
-          toast.show('Upload Gagal', {
-            message: error.response?.data?.message || error.message,
-            type: 'error',
-          });
-          field.onChange('');
-        } finally {
-          setUploading(false);
-        }
+        const modelName = fieldConfig.rules?.model_name || 'general';
+        const isPublic = fieldConfig.rules?.is_public === true;
+        field.onChange({
+          uri: asset.uri,
+          name: asset.fileName || asset.uri.split('/').pop(),
+          type: asset.type || 'image/jpeg',
+          isFileObject: true,
+          modelName,
+          isPublic,
+        });
       }
     } catch (error) {
       console.error(error);
     }
   };
 
+  const handleWebCapture = async (dataUri: string) => {
+    const modelName = fieldConfig.rules?.model_name || 'general';
+    const isPublic = fieldConfig.rules?.is_public === true;
+    field.onChange({
+      uri: dataUri,
+      name: `webcam-${Date.now()}.jpg`,
+      type: 'image/jpeg',
+      isFileObject: true,
+      modelName,
+      isPublic,
+    });
+    setShowWebCamera(false);
+  };
+
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb="$2" width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain}>
         {fieldConfig.label}
         {fieldConfig.rules?.required && <Text color={COLORS.danger}> *</Text>}
       </Label>
-      <Button
-        icon={uploading ? () => <ActivityIndicator size="small" color={COLORS.textLight} /> : Camera}
-        onPress={takePhoto}
-        disabled={fieldConfig.is_locked || uploading}
-        borderColor={fieldState.error ? COLORS.danger : undefined}
-        borderWidth={fieldState.error ? 1 : 0}
-      >
-        {uploading ? 'Mengunggah...' : 'Pilih Foto'}
-      </Button>
+      {allowGallery ? (
+        <XStack gap="$2" alignItems="center">
+          <Button
+            icon={ImageIcon}
+            onPress={pickFromGallery}
+            disabled={fieldConfig.is_locked}
+            borderColor={fieldState.error ? COLORS.danger : undefined}
+            borderWidth={fieldState.error ? 1 : 0}
+          >
+            Pilih Gambar
+          </Button>
+          <Button
+            icon={uploading ? () => <ActivityIndicator size="small" color={COLORS.textLight} /> : Camera}
+            onPress={takePhoto}
+            disabled={fieldConfig.is_locked || uploading}
+            borderColor={fieldState.error ? COLORS.danger : undefined}
+            borderWidth={fieldState.error ? 1 : 0}
+          >
+            {uploading ? 'Mengunggah...' : 'Ambil Foto'}
+          </Button>
+        </XStack>
+      ) : (
+        <XStack gap="$2" alignItems="center">
+          <Button
+            icon={uploading ? () => <ActivityIndicator size="small" color={COLORS.textLight} /> : Camera}
+            onPress={takePhoto}
+            disabled={fieldConfig.is_locked || uploading}
+            borderColor={fieldState.error ? COLORS.danger : undefined}
+            borderWidth={fieldState.error ? 1 : 0}
+          >
+            {uploading ? 'Mengunggah...' : 'Ambil Foto'}
+          </Button>
+        </XStack>
+      )}
       {field.value ? (
         <XStack mt="$2" p="$2" br="$2" bc="$backgroundHover" ai="center" jc="space-between">
           <Text color={COLORS.success} fontSize={12} numberOfLines={1} flex={1}>
@@ -1021,18 +1392,24 @@ const InputCamera: React.FC<FieldProps> = ({ fieldConfig, control }) => {
           uri={field.value?.isFileObject ? field.value.uri : (typeof field.value === 'string' ? getImageUrl(field.value) : '')}
         />
       )}
+      {showWebCamera && (
+        <WebCamera
+          onCapture={handleWebCapture}
+          onCancel={() => setShowWebCamera(false)}
+        />
+      )}
     </YStack>
   );
 };
 
-const InputSwitch: React.FC<FieldProps> = ({ fieldConfig, control }) => {
+const InputSwitch: React.FC<FieldProps> = ({ fieldConfig, control, disableColumnWidth }) => {
   const { field } = useController({
     name: fieldConfig.id,
     control,
   });
 
   return (
-    <YStack gap="$1" mb="$2">
+    <YStack gap="$1" mb={0} width={!disableColumnWidth && fieldConfig.columns ? getFieldWidth(fieldConfig.columns) : '100%'}>
       <XStack gap="$3" ai="center" jc="space-between" bc="$backgroundHover" p="$3" br="$3">
         <Label htmlFor={fieldConfig.id} fontWeight="600" color={COLORS.textMain} flex={1}>
           {fieldConfig.label}
