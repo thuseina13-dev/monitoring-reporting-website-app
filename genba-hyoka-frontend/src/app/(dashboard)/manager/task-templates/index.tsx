@@ -69,16 +69,6 @@ export default function TaskTemplatesListScreen() {
     return data.pages.flatMap((page) => page.data || []);
   }, [data]);
 
-  const renderItem = (item: any) => (
-    <TemplateCard
-      key={item.id}
-      template={item}
-      onEdit={handleEdit}
-      onDelete={handleDeletePress}
-      isDeleting={deletingId === item.id && deleteMutation.isPending}
-    />
-  );
-
   const FilterElement = (
     <Select value={statusFilter} onValueChange={setStatusFilter} disablePreventBodyScroll>
       <Select.Trigger iconAfter={ChevronDown} width={130} bg={COLORS.inputBackground} bw={1} bc={COLORS.borderLight} h={45}>
@@ -95,9 +85,9 @@ export default function TaskTemplatesListScreen() {
       <Select.Content>
         <Select.Viewport>
           <Select.Group>
-            <Select.Item index={0} value="all"><Select.ItemText>Semua</Select.ItemText><Select.ItemIndicator ml="auto"><Check size={16}/></Select.ItemIndicator></Select.Item>
-            <Select.Item index={1} value="active"><Select.ItemText>Aktif</Select.ItemText><Select.ItemIndicator ml="auto"><Check size={16}/></Select.ItemIndicator></Select.Item>
-            <Select.Item index={2} value="inactive"><Select.ItemText>Non-aktif</Select.ItemText><Select.ItemIndicator ml="auto"><Check size={16}/></Select.ItemIndicator></Select.Item>
+            <Select.Item index={0} value="all"><Select.ItemText>Semua</Select.ItemText><Select.ItemIndicator ml="auto"><Check size={16} /></Select.ItemIndicator></Select.Item>
+            <Select.Item index={1} value="active"><Select.ItemText>Aktif</Select.ItemText><Select.ItemIndicator ml="auto"><Check size={16} /></Select.ItemIndicator></Select.Item>
+            <Select.Item index={2} value="inactive"><Select.ItemText>Non-aktif</Select.ItemText><Select.ItemIndicator ml="auto"><Check size={16} /></Select.ItemIndicator></Select.Item>
           </Select.Group>
         </Select.Viewport>
       </Select.Content>
@@ -120,7 +110,15 @@ export default function TaskTemplatesListScreen() {
       onLoadMore={fetchNextPage}
       hasNextPage={hasNextPage}
       isFetchingNextPage={isFetchingNextPage}
-      renderItem={renderItem}
+      renderItem={(item: any) => (
+        <TemplateCard
+          key={item.id}
+          template={item}
+          onEdit={handleEdit}
+          onDelete={handleDeletePress}
+          isDeleting={deletingId === item.id && deleteMutation.isPending}
+        />
+      )}
     />
   );
 }

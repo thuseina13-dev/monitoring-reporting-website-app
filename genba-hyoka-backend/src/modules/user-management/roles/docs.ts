@@ -10,6 +10,14 @@ const userNested = t.Object({
   isActive: t.Boolean(),
 });
 
+const roleTaskNested = t.Object({
+  id: t.String(),
+  roleId: t.String(),
+  taskDefinitionId: t.String(),
+  createdAt: t.Any(),
+  taskName: t.Optional(t.Union([t.String(), t.Null()])),
+});
+
 const roleResponseObj = t.Object({
   id: t.String(),
   code: t.String(),
@@ -17,6 +25,7 @@ const roleResponseObj = t.Object({
   type: t.Optional(t.Union([t.String(), t.Null()])),
   description: t.Optional(t.Union([t.String(), t.Null()])),
   users: t.Optional(t.Array(userNested)),
+  roleTasks: t.Optional(t.Array(roleTaskNested)),
 });
 
 // ── GET /roles ──────────────────────────────────────────────

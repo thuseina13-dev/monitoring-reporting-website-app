@@ -172,8 +172,8 @@ describe('Role Tasks Module - Unit Test', () => {
           Cookie: `access_token=${token}`
         },
         body: JSON.stringify({
-          role_id: '8a1b2c3d-5678-1234-abcd-ef1234567890',
-          task_definition_id: '8f8b83c2-1234-5678-abcd-ef1234567890'
+          roleId: '8a1b2c3d-5678-1234-abcd-ef1234567890',
+          taskDefinitionId: '8f8b83c2-1234-5678-abcd-ef1234567890'
         })
       })
     );
@@ -207,8 +207,8 @@ describe('Role Tasks Module - Unit Test', () => {
           Cookie: `access_token=${token}`
         },
         body: JSON.stringify({
-          role_id: '8a1b2c3d-5678-1234-abcd-ef1234567890',
-          task_definition_ids: ['8f8b83c2-1234-5678-abcd-ef1234567890']
+          roleId: '8a1b2c3d-5678-1234-abcd-ef1234567890',
+          taskDefinitionIds: ['8f8b83c2-1234-5678-abcd-ef1234567890']
         })
       })
     );
@@ -228,8 +228,8 @@ describe('Role Tasks Module - Unit Test', () => {
           Cookie: `access_token=${token}`
         },
         body: JSON.stringify({
-          role_id: '8a1b2c3d-5678-1234-abcd-ef1234567890',
-          task_definition_ids: ['8f8b83c2-1234-5678-abcd-ef1234567890']
+          roleId: '8a1b2c3d-5678-1234-abcd-ef1234567890',
+          taskDefinitionIds: ['8f8b83c2-1234-5678-abcd-ef1234567890']
         })
       })
     );
