@@ -6,6 +6,8 @@ import tamaguiConfig from '../../tamagui.config';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
+import { COLORS } from '../constants/theme';
 import { CustomToast } from '../components/CustomToast';
 
 const queryClient = new QueryClient();
@@ -23,6 +25,30 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const styleElement = document.createElement('style');
+      styleElement.id = 'theme-css-variables';
+      styleElement.innerHTML = `
+        :root {
+          --primary-color: ${COLORS.primary};
+          --danger-color: ${COLORS.danger};
+          --border-light: ${COLORS.borderLight};
+          --input-bg: ${COLORS.inputBackground};
+          --text-main: ${COLORS.textMain};
+          --bg-light: ${COLORS.bgLight};
+          --text-secondary: ${COLORS.textSecondary};
+          --card-bg: ${COLORS.cardBackground};
+        }
+      `;
+      document.head.appendChild(styleElement);
+      return () => {
+        const el = document.getElementById('theme-css-variables');
+        if (el) el.remove();
+      };
+    }
+  }, []);
 
   if (!loaded) return null;
 

@@ -46,13 +46,13 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     title: 'Template Tugas',
     icon: 'FileText',
-    href: '/(dashboard)/manager/task-template',
+    href: '/(dashboard)/manager/task-templates',
     requiredRoleValue: ROLE_BIT.MANAGER,
   },
   {
     title: 'Template Evaluasi',
     icon: 'FileCheck',
-    href: '/(dashboard)/manager/eval-template',
+    href: '/(dashboard)/manager/eval-templates',
     requiredRoleValue: ROLE_BIT.MANAGER,
   },
   {

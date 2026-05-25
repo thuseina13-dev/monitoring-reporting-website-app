@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { YStack, Text, Spinner } from 'tamagui';
-import { DynamicFormRenderer, FormSchema } from '../../../../components/DynamicForm';
+import { DynamicFormRenderer, FormSchema } from '../../../../components/dynamicForm';
 import { useCreateCompany } from '../../../../hooks/companies/useCreateCompany';
 import { router } from 'expo-router';
 import ListHeader from '../../../../components/layout/ListHeader';
@@ -93,10 +93,10 @@ export default function CreateCompanyProfilePage() {
           <Text color={COLORS.textSecondary} textAlign="center" fontSize={14}>
             Lengkapi data di bawah ini untuk mendaftarkan perusahaan baru.
           </Text>
-          
-          <DynamicFormRenderer 
-            schema={companyProfileSchema} 
-            onSubmit={handleSubmit} 
+
+          <DynamicFormRenderer
+            schema={companyProfileSchema}
+            onSubmit={handleSubmit}
             onCancel={() => router.back()}
             isLoading={isPending}
           />

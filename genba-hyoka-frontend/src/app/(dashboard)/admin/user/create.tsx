@@ -1,8 +1,8 @@
 import React from 'react';
 import { ScrollView, YStack, Text, Spinner } from 'tamagui';
 import { router } from 'expo-router';
-import { DynamicFormRenderer } from '../../../../components/DynamicForm/DynamicFormRenderer';
-import { FormSchema } from '../../../../components/DynamicForm/types';
+import { DynamicFormRenderer } from '../../../../components/dynamicForm/DynamicFormRenderer';
+import { FormSchema } from '../../../../components/dynamicForm/types';
 import ListHeader from '../../../../components/layout/ListHeader';
 import { COLORS } from '../../../../constants/theme';
 import { useRegisterUser } from '../../../../hooks/users/useRegisterUser';

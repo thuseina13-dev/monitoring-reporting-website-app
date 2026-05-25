@@ -1,0 +1,38 @@
+/* 
+ * WebDatePicker.css
+ * 
+ * Menggunakan CSS Variables Global yang disuntikkan secara dinamis
+ * dari src/constants/theme.ts di src/app/_layout.tsx.
+ */
+
+.web-date-picker {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background-color: var(--input-bg);
+  color: var(--text-main);
+  outline: none;
+  font-size: 14px;
+  font-family: inherit;
+  width: 90%;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.web-date-picker:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.15); /* Halus fokus ring menggunakan primary color */
+}
+
+.web-date-picker.has-error {
+  border-color: var(--danger-color);
+}
+
+.web-date-picker.has-error:focus {
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.15); /* Halus fokus ring menggunakan danger color */
+}
+
+.web-date-picker:disabled {
+  background-color: var(--bg-light);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}

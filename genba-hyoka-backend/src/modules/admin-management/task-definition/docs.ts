@@ -26,11 +26,7 @@ export const proceduresSchema = t.Object({
   ),
 });
 
-export const formSchemaObject = t.Object({
-  type: t.String(),
-  properties: t.Record(t.String(), t.Any()),
-  required: t.Optional(t.Array(t.String())),
-});
+export const formSchemaObject = t.Record(t.String(), t.Any());
 
 export const taskDefinitionResponseSchema = t.Object({
   id: t.String(),
@@ -116,16 +112,16 @@ export const createTaskDefinitionDocs = {
     name: t.String({ minLength: 3, error: 'Nama template tugas minimal 3 karakter.' }),
     description: t.Optional(t.String()),
     procedures: t.Optional(proceduresSchema),
-    form_schema: formSchemaObject,
-    is_active: t.Optional(t.Boolean()),
-    is_mandatory: t.Optional(t.Boolean()),
+    formSchema: formSchemaObject,
+    isActive: t.Optional(t.Boolean()),
+    isMandatory: t.Optional(t.Boolean()),
   }),
   response: {
     201: successResponse(t.Object({
       id: t.String(),
       name: t.String(),
-      is_active: t.Boolean(),
-      created_at: t.String(),
+      isActive: t.Boolean(),
+      createdAt: t.String(),
     })),
     ...errorResponses([400, 401, 403, 500]),
   },
@@ -143,9 +139,9 @@ export const updateTaskDefinitionDocs = {
     name: t.Optional(t.String({ minLength: 3 })),
     description: t.Optional(t.String()),
     procedures: t.Optional(proceduresSchema),
-    form_schema: t.Optional(formSchemaObject),
-    is_active: t.Optional(t.Boolean()),
-    is_mandatory: t.Optional(t.Boolean()),
+    formSchema: t.Optional(formSchemaObject),
+    isActive: t.Optional(t.Boolean()),
+    isMandatory: t.Optional(t.Boolean()),
   }),
   response: {
     200: successResponse(taskDefinitionResponseSchema),

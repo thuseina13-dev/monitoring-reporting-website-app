@@ -26,23 +26,37 @@ export interface DataSourceDependsOn {
 
 export type DataSource =
   | {
-      type: 'static';
-      options: { label: string; value: any }[];
-      depends_on?: DataSourceDependsOn;
-    }
+    type: 'static';
+    options: { label: string; value: any }[];
+    depends_on?: DataSourceDependsOn;
+  }
   | {
-      type: 'dynamic';
-      endpoint: string;
-      label_key: string;
-      value_key: string;
-      depends_on?: DataSourceDependsOn;
-      pagination?: 'cursor' | 'offset';
-    };
+    type: 'dynamic';
+    endpoint: string;
+    label_key: string;
+    value_key: string;
+    depends_on?: DataSourceDependsOn;
+    pagination?: 'cursor' | 'offset';
+  };
 
 export interface FormFieldRules {
   required?: boolean;
   allow_gallery?: boolean;
   max_size_mb?: number;
+  min_length?: number;
+  max_length?: number;
+  min?: number;
+  max?: number;
+  pattern?: string;
+  allow_decimal?: boolean;
+  disable_future_dates?: boolean;
+  min_date?: string;
+  max_date?: string;
+  fetch_method?: 'auto' | 'manual';
+  min_selections?: number;
+  max_selections?: number;
+  allowed_extensions?: string[];
+  date_type?: 'date' | 'datetime-local' | 'time';
   [key: string]: any;
 }
 

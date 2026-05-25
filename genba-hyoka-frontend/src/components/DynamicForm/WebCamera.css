@@ -1,0 +1,15 @@
+.web-camera-video {
+  width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.web-camera-preview {
+  width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.web-camera-hidden-canvas {
+  display: none;
+}
